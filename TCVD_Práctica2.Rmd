@@ -1,0 +1,63 @@
+---
+title: 'Tipología y ciclo de vida de los datos: Práctica 2 - Limpieza y análisis de datos'
+author: "Autoras: Eva Garía Ocaña y Carmen nieves Ojeda Guerra"
+date: "Enero 2022"
+output:
+  html_document:
+    highlight: default
+    number_sections: yes
+    theme: cosmo
+    toc: yes
+    toc_depth: 2
+  word_document: default
+  pdf_document:
+    highlight: zenburn
+    toc: yes
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+******
+# Descripción del dataset
+******
+
+******
+# Integración y selección de los datos de interés a analizar
+******
+
+******
+# Limpieza de los datos
+******
+
+## Identificación y tratamiento de elementos vacíos, ceros o nulos
+
+## Identificación y tratamiento de valores extremos
+
+******
+# Análisis de los datos
+******
+
+## Planificación de los análisis a aplicar
+
+
+## Normalidad y homogeneidad de la varianza
+
+
+## Pruebas estadísticas
+
+
+******
+# Representación de los resultados
+******
+
+******
+# Conclusiones
+******
+
+
+
+
+
+
+
