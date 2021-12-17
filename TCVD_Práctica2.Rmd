@@ -22,9 +22,141 @@ knitr::opts_chunk$set(echo = TRUE)
 # Descripción del dataset
 ******
 
+El _dataset_ escogido para el trabajo es el **Breast Cancer Wisconsin (Diagnostic) Data Set** de UCI Machine Learning Reposity (https://archive.ics.uci.edu/ml/datasets/Breast+Cancer+Wisconsin+(Diagnostic)) que analiza la incidencia del cáncer de mama en una población de 569 mujeres.
+
+**Motivación:** Según la OMS, el cáncer de mama es el tipo de cáncer más común, con más de 2,2 millones de casos en 2020 y cerca de una de cada 12 mujeres enfermarán de cáncer de mama a lo largo de su vida. El cáncer de mama es la principal causa de mortalidad en las mujeres. En 2020, alrededor de 685000 mujeres fallecieron como consecuencia de esa enfermedad. Sin embargo, desde 1980 se han realizado importantes avances en el tratamiento del cáncer de mama debido a la combinación de la **detección precoz** y las terapias eficaces, basadas en cirugía, radioterapia y farmacoterapia (https://www.who.int/es/news-room/fact-sheets/detail/breast-cancer, marzo 2021). En España, según los últimos datos recogidos por el Sistema Europeo de Información del Cáncer (ECIS) de 2020, aproximadamente el 30% de los cánceres diagnosticados en mujeres se originan en la mama (https://www.geicam.org/sala-de-prensa/el-cancer-de-mama-en-espana, 2021). Una detección
+temprana de la presencia de células cancerosas malignas aumenta la posibilidad de vida de las pacientes, sobre todo cuando se localiza un tumor pequeño y aún no ramificado. Para la realización de este estudio, el análisis de los datos obtenidos a partir de la información de estas células puede detectar la malignidad o benignidad de las mismas.
+
+**Potencial analítico del conjunto de datos:** Debido a las características del conjunto de datos (atributos de los que dispone) se pueden plantear preguntas que ayuden a comprender mejor cómo afectan los factores clave en la población estudiada y analizar qué variables pueden ser decisivas a la hora de conocer si un tumor es benigno o maligno. Una medida del potencial del conjunto de datos se puede ver en la cantidad de artículos de reconocido prestigio que lo usan en sus investigaciones, como por ejemplo:
+
+1- Chien-Hsing Chen, _A hybrid intelligent model of analyzing clinical breast cancer data using clustering techniques with feature selection_, Applied Soft Computing, Volume 20, 2014, Pages 4-14, ISSN 1568-4946, https://doi.org/10.1016/j.asoc.2013.10.024.
+
+2- Lingxi Peng, Wenbin Chen, Wubai Zhou, Fufang Li, Jin Yang, Jiandong Zhang, _An immune-inspired semi-supervised algorithm for breast cancer diagnosis_,
+Computer Methods and Programs in Biomedicine, Volume 134, 2016, Pages 259-265, ISSN 0169-2607, https://doi.org/10.1016/j.cmpb.2016.07.020.
+
+3- Bichen Zheng, Sang Won Yoon, Sarah S. Lam, _Breast cancer diagnosis based on feature extraction using a hybrid of K-means and support vector machine algorithms_, Expert Systems with Applications, Volume 41, Issue 4, Part 1, 2014,
+Pages 1476-1482, ISSN 0957-4174, https://doi.org/10.1016/j.eswa.2013.08.044.
+
+4- S. Punitha, Thompson Stephan, Amir H. Gandomi, _A Novel Breast Cancer Diagnosis Scheme With Intelligent Feature and Parameter Selections_,
+Computer Methods and Programs in Biomedicine, 2021, 106432, ISSN 0169-2607, https://doi.org/10.1016/j.cmpb.2021.106432.
+
+Para comenzar el análisis, se carga el _dataset_ desde la fuente origen:
+
+```{r message= FALSE, warning=FALSE}
+breast_data <- read.table("https://archive.ics.uci.edu/ml/machine-learning-databases/breast-cancer-wisconsin/wdbc.data", sep = ",", col.names = c("ID", "Diagnosis", "Radius_mean", "Texture_mean", "Perimeter_mean", "Area_mean", "Smoothness_mean", "Compactness_mean", "Concavity_mean", "Concave.points_mean", "Symmetry_mean", "Fractal_dimension_mean", "Radius_se", "Texture_se", "Perimeter_se", "Area_se", "Smoothness_se", "Compactness_se", "Concavity_se", "Concave.points_se", "Symmetry_se", "Fractal_dimension_se", "Radius_worst", "Texture_worst","Perimeter_worst", "Area_worst", "Smoothness_worst", "Compactness_worst", "Concavity_worst", "Concave.points_worst", "Symmetry_worst", "Fractal_dimension_worst"), stringsAsFactors = T)
+str(breast_data)
+```
+
+Las características se calculan a partir de una imagen digitalizada de una masa mamaria. Describen características de los núcleos celulares presentes en la imagen. Como se puede observar existen 569 registros con 32 variables, de las cuales el atributo **Diagnosis** es la variable objetivo. De cada célula se obtienen 10 características, existiendo 3 datos para cada una. Estas son:
+
+**Radius**: media de las distancias del centro a los puntos del perímetro de la célula. Compuesta por los atributos **Radius_mean**, **Radius_se** y **Radius_worst**.  
+**Texture**: desviación estándar de los valores de la escala de grises. Compuesta por los atributos **Texture_mean**, **Texture_se** y **Texture_worst**.  
+**Perimeter**: perímetro de la célula. Compuesta por los atributos **Perimeter_mean**, **Perimeter_se** y **Perimeter_worst**.  
+**Area**: área de la célula. Compuesta por los atributos **Area_mean**, **Area_se** y **Area_worst**.  
+**Smothness**: variación local de las longitudes de los radios. Compuesta por los atributos **Smothness_mean**, **Smothness_se** y **Smothness_worst**.  
+**Compactness**: perimeter^2 / area - 1.0. Compuesta por los atributos **Compactness_mean**, **Compactness_se** y **Compactness_worst**.  
+**Concavity**: gravedad de las partes cóncavas del contorno. Compuesta por los atributos **Concavity_mean**, **Concavity_se** y **Concavity_worst**.  
+**Concave points**: número de porciones cóncavas del contorno. Compuesta por los atributos **Concave.points_mean**, **Concave.points_se** y **Concave.points_worst**.  
+**Symmetry**: simetría de la célula. Compuesta por los atributos **Symmetry_mean**, **Symmetry_se** y **Symmetry_worst**.  
+**Fractal dimension**: "aproximación al borde" - 1. Compuesta por los atributos **Fractal_dimension_mean**, **Fractal_dimension_se** y **Fractal_dimension_worst**.  
+
+Además de las características anteriores de la células analizadas en una muestra, también se conoce:
+
+**ID** (int): identificador de la muestra.  
+**Diagnosis** (Factor): variable objetivo en la que "B" indica benignidad y "M", malignidad de la muestra.
+
+El total de mujeres con un diagnóstico benigno o maligno se muestra en la siguiente gráfica:
+
+```{r message= FALSE, warning=FALSE}
+if (!require('ggplot2')) install.packages('ggplot2'); library('ggplot2')
+if (!require('dplyr')) install.packages('dplyr'); library('dplyr')
+
+datos <- breast_data %>% group_by(Diagnosis) %>% summarise(Total=n()) 
+ggplot(datos, aes(x = Diagnosis, y=Total, fill=Diagnosis) ) +    
+  geom_bar(width = 0.9, stat="identity",              
+           position = position_dodge()                
+           )+  
+  
+  ylim(c(0,400))+
+  labs(x="Diagnóstico de la paciente", y= "Frecuencia") +   
+  labs(fill = "")+                                         
+  
+  geom_text(aes(label=Total), vjust=1.6, color="black",   
+              position = position_dodge(0.9),  size=4.0
+            ) +                                            
+  
+  theme_bw(base_size = 15) + scale_fill_hue(labels = c("B: Benigno", "M: Maligno"))
+
+
+```
+
+Los datos no están bien distribuidos ya que existe un mayor número de muestras con un valor 'B' de la variable objetivo.
+
+
 ******
 # Integración y selección de los datos de interés a analizar
 ******
+
+Los datos proceden de una única fuente de datos, por lo que no hay necesidad de intergrar datos de fuentes diferentes. 
+
+Asimismo, después de analizar los datos se considera que hay que eliminar el atributo **ID**, ya que no aporta información para poder clasificar una muestra de datos como posible benigna o maligna y también se elimina **Diagnosis** porque es nuestra varible objetivo. Así, el nuevo _dataset_ sería el siguiente:
+
+```{r  message= FALSE, warning=FALSE}
+
+breast_data_def <- breast_data[c(3:32)]
+
+```
+
+
+Vamos analizar la correlación entre los atributos para comprobar si se pueden eliminar atributos del conjunto:
+
+
+```{r}
+if (!require('corrplot')) install.packages('corrplot'); library('corrplot')
+if (!require('ggcorrplot')) install.packages('ggcorrplot'); library('ggcorrplot')
+
+cor.mtest <- function(mat, ...) {
+    mat <- as.matrix(mat)
+    n <- ncol(mat)
+    p.mat<- matrix(NA, n, n)
+    diag(p.mat) <- 0
+    for (i in 1:(n - 1)) {
+        for (j in (i + 1):n) {
+            tmp <- cor.test(mat[, i], mat[, j], ...)
+            p.mat[i, j] <- p.mat[j, i] <- tmp$p.value
+        }
+    }
+  colnames(p.mat) <- rownames(p.mat) <- colnames(mat)
+  p.mat
+}
+
+# matriz de los p-values de la correlación
+p.mat <- cor.mtest(breast_data_def)
+```
+
+```{r}
+if (!require('ggcorrplot')) install.packages('ggcorrplot'); library('ggcorrplot')
+
+M <- cor(breast_data_def)
+
+corrplot(M, type="upper", order="hclust", method="circle",
+         p.mat = p.mat, sig.level = 0.05, insig = "blank", tl.cex  = 0.65)
+
+```
+
+Revisando la información de correlación, se puede ver que **Area_mean**, **Radius_mean**, **Perimeter_mean**, **Area_worst**, **Radius_worst** y **Perimeter_worst** tienen una correlación de 1. Asimismo, **Area_se**, **Radius_se** y **Permiter_se** también tienen una correlación de 1. Lo mismo ocurre entre **Concave.points_worst**, **Concave.points_mean** y **Concavity_mean**. En todos los casos se puede eliminar todas ellas, menos una de cada grupo.
+
+```{r}
+
+col_eliminar <- c("Radius_mean", "Perimeter_mean", "Area_worst", "Radius_worst", "Radius_se", "Permiter_se", "Concave.points_worst", "Concave.points_mean")
+
+breast_data_def_corr <- breast_data_def[, !(names(breast_data_def) %in% col_eliminar)]
+dim(breast_data_def_corr)
+
+```
+
+Finalmente, el conjunto de datos tendrá 23 atributos sobre los que se hará el análisis posterior.
+
 
 ******
 # Limpieza de los datos
@@ -32,7 +164,39 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## Identificación y tratamiento de elementos vacíos, ceros o nulos
 
+Los datos están limpios y no hay valores perdidos. Si revisamos el número de elementos nulos se puede observar que no hay:
+
+```{r message= FALSE, warning=FALSE}
+sum(is.na(breast_data_def_corr))
+
+```
+
+En caso de que hubieran elementos nulos se puede: HABLAR UN POCO MÁS DE ESTO AL NO HABER VALORES NULOS!!!!!
+
+* Eliminar los registros donde existan elementos nulos.
+* Cambiar los valores nulos por la media de valores de ese atributo.
+* Cambiar los valores nulos por la mediana de valores de ese atributo.
+
+
 ## Identificación y tratamiento de valores extremos
+
+En la siguiente imagen se pueden observar los valores extremos (_outliers_) de cada atributo:
+
+```{r message= FALSE, warning=FALSE}
+
+boxplot(scale(breast_data_def_corr[1:5]), xlab ="variables", cex.axis=0.75, ylab = "Rango de Valores", col="blue", main="Información sobre anomalías y valores extremos")
+boxplot(scale(breast_data_def_corr[6:10]), xlab ="variables", cex.axis=0.55, ylab = "Rango de Valores", col="blue", main="Información sobre anomalías y valores extremos")
+boxplot(scale(breast_data_def_corr[11:15]), xlab ="variables", cex.axis=0.75, ylab = "Rango de Valores", col="blue", main="Información sobre anomalías y valores extremos")
+boxplot(scale(breast_data_def_corr[16:20]), xlab ="variables", cex.axis=0.60, ylab = "Rango de Valores", col="blue", main="Información sobre anomalías y valores extremos")
+boxplot(scale(breast_data_def_corr[21:23]), xlab ="variables", cex.axis=0.75, ylab = "Rango de Valores", col="blue", main="Información sobre anomalías y valores extremos")
+```
+
+
+
+IMPORTANTE: se podría comprobar si estos valores outliers corresponde con tumores malignos. Si es así, no se podría eliminar... Dejar para más adelante.
+
+
+
 
 ******
 # Análisis de los datos
