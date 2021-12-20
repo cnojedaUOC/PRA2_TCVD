@@ -103,7 +103,7 @@ Asimismo, después de analizar los datos se considera que hay que eliminar el at
 
 ```{r  message= FALSE, warning=FALSE}
 
-breast_data_def <- breast_data[c(3:32)]
+breast_data_def <- breast_data[c(2:32)]
 
 ```
 
@@ -131,13 +131,14 @@ cor.mtest <- function(mat, ...) {
 }
 
 # matriz de los p-values de la correlación
-p.mat <- cor.mtest(breast_data_def)
+p.mat <- cor.mtest(breast_data_def[c(2:31)])
+
 ```
 
 ```{r}
 if (!require('ggcorrplot')) install.packages('ggcorrplot'); library('ggcorrplot')
 
-M <- cor(breast_data_def)
+M <- cor(breast_data_def[c(2:31)])
 
 corrplot(M, type="upper", order="hclust", method="circle",
          p.mat = p.mat, sig.level = 0.05, insig = "blank", tl.cex  = 0.65)
@@ -148,14 +149,16 @@ Revisando la información de correlación, se puede ver que **Area_mean**, **Rad
 
 ```{r}
 
-col_eliminar <- c("Radius_mean", "Perimeter_mean", "Area_worst", "Radius_worst", "Radius_se", "Permiter_se", "Concave.points_worst", "Concave.points_mean")
+d_num <- as.numeric(breast_data_def[,1]) 
+col_eliminar <- c("Radius_mean", "Perimeter_mean", "Area_worst", "Radius_worst", "Radius_se", "Permiter_se", "Concave.points_worst", "Concave.points_mean","Diagnosis")
 
 breast_data_def_corr <- breast_data_def[, !(names(breast_data_def) %in% col_eliminar)]
+breast_data_def_corr["diagnosis_num"] <- d_num
 dim(breast_data_def_corr)
 
 ```
 
-Finalmente, el conjunto de datos tendrá 23 atributos sobre los que se hará el análisis posterior.
+Finalmente, el conjunto de datos tendrá 24 atributos sobre los que se hará el análisis posterior.
 
 
 ******
@@ -163,6 +166,8 @@ Finalmente, el conjunto de datos tendrá 23 atributos sobre los que se hará el 
 ******
 
 ## Identificación y tratamiento de elementos vacíos, ceros o nulos
+
+
 
 Los datos están limpios y no hay valores perdidos. Si revisamos el número de elementos nulos se puede observar que no hay:
 
@@ -176,7 +181,6 @@ En caso de que hubieran elementos nulos se puede: HABLAR UN POCO MÁS DE ESTO AL
 * Eliminar los registros donde existan elementos nulos.
 * Cambiar los valores nulos por la media de valores de ese atributo.
 * Cambiar los valores nulos por la mediana de valores de ese atributo.
-
 
 ## Identificación y tratamiento de valores extremos
 
@@ -202,22 +206,83 @@ IMPORTANTE: se podría comprobar si estos valores outliers corresponde con tumor
 # Análisis de los datos
 ******
 
+
 ## Planificación de los análisis a aplicar
 
 
+
 ## Normalidad y homogeneidad de la varianza
+Para comprobar cuales de las variables cuantitativas de las que disponemos se empelara la prueba de normalidad de AndersonDarling. Si la variable tiene un p-valor superior a 0.05 se considera que sigue una distribucion normal.  
+if (!require('nortest')) install.packages('nortest'); library('nortest')
+
+alpha = 0.05
+col.names = colnames(breast_data_def_corr)
+
+for (i in 1:ncol(breast_data_def_corr)) {
+  if (i == 1) cat("Variables que no siguen una distribución normal:\n")
+    if (is.integer(breast_data_def_corr[,i]) | is.numeric(breast_data_def_corr[,i])) {
+      p_val = ad.test(breast_data_def_corr[,i])$p.value
+      if (p_val < alpha) {
+        cat(col.names[i])
+        # Format output
+        if (i < ncol(breast_data_def_corr) - 1) cat(", ")
+        if (i %% 3 == 0) cat("\n")
+    }
+  }
+}
 
 
 ## Pruebas estadísticas
+Puesto que las variables no se ajustan a una distribucion normal, se empleara el coecifiente de correlacion de Spearman para comprobar que variables muestran una mayor relacion con el tipo de tumor. 
+corr_matrix <- matrix(nc = 2, nr = 0)
+colnames(corr_matrix) <- c("estimate", "p-value")
+# Calcular el coeficiente de correlación para cada variable cuantitativa
+# con respecto al campo "diagnosis_num"
+for (i in 1:(ncol(breast_data_def_corr) - 1)) {
+  if (is.integer(breast_data_def_corr[,i]) | is.numeric(breast_data_def_corr[,i])) {
+    spearman_test = cor.test(breast_data_def_corr[,i],                 breast_data_def_corr[,length(breast_data_def_corr)],
+    method = "spearman",exact=FALSE)
+    corr_coef = spearman_test$estimate
+    p_val = spearman_test$p.value
+    # Add row to matrix
+    pair = matrix(ncol = 2, nrow = 1)
+    pair[1][1] = corr_coef
+    pair[2][1] = p_val
+    corr_matrix <- rbind(corr_matrix, pair)
+    rownames(corr_matrix)[nrow(corr_matrix)] <- colnames(breast_data_def_corr)[i]
+  }
+}
+
+Ordenamos los valores en base a su correlacion, para conocer que variables se correlacionan mas con el diagnostico
+corr_matrix[sort(abs(corr_matrix[,1]),decreasing=T,index.return=T)[[2]],]
+
+Se aprecia que las variables que mas influyen son **Perimeter_worst**, **Area_mean**, **Concavity_mean**, **Area_se** y **Concavity_worst**
+
+
+Anteriormente se ha sujerido la hipotesis de que los valores extremos indican  tumores malignos. Se empleara la columna **perimeter_worst** puesto que es la que mayor correlacion presenta. .Para confirmar o descartar esta hipotesis se empleara un test de Mann-Whitney, puesto que los valores no siguen una distribucion normal y el numero de muestras es pequeño.
+
+out_perimeter_worst <- boxplot.stats(breast_data_def_corr$Perimeter_worst)$out
+out_perimeter_worst_ind <- which(breast_data_def_corr$Perimeter_worst %in% out_perimeter_worst)
+out_perimeter_diagnosis <- breast_data_def_corr[out_perimeter_worst_ind,]
+in_perimeter_worst <- subset(breast_data_def_corr$Perimeter_worst, !(breast_data_def_corr$Perimeter_worst %in% out_perimeter_diagnosis$Perimeter_worst))
+in_perimeter_worst_ind <- which(breast_data_def_corr$Perimeter_worst %in% in_perimeter_worst)
+in_perimeter_diagnosis <- breast_data_def_corr[in_perimeter_worst_ind,]
+
+wilcox.test( out_perimeter_diagnosis$diagnosis_num,in_perimeter_diagnosis$diagnosis_num, alternative = "greater")
+
+En este caso el p-valor es menor que 0.5, por lo que aceptamos la hipotesis de que los valores extremos indican  tumores malignos.
+
 
 
 ******
 # Representación de los resultados
 ******
 
+
 ******
 # Conclusiones
 ******
+
 
 
 
