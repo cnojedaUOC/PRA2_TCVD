@@ -99,7 +99,7 @@ Los datos no están bien distribuidos ya que existe un mayor número de muestras
 
 Los datos proceden de una única fuente de datos, por lo que no hay necesidad de intergrar datos de fuentes diferentes. 
 
-Asimismo, después de analizar los datos se considera que hay que eliminar el atributo **ID**, ya que no aporta información para poder clasificar una muestra de datos como posible benigna o maligna y también se elimina **Diagnosis** porque es nuestra varible objetivo. Así, el nuevo _dataset_ sería el siguiente:
+Asimismo, después de analizar los datos se considera que hay que eliminar el atributo **ID**, ya que no aporta información para poder clasificar una muestra de datos como posible benigna o maligna. Así, el nuevo _dataset_ sería el siguiente:
 
 ```{r  message= FALSE, warning=FALSE}
 
@@ -111,7 +111,7 @@ breast_data_def <- breast_data[c(2:32)]
 Vamos analizar la correlación entre los atributos para comprobar si se pueden eliminar atributos del conjunto:
 
 
-```{r}
+```{r  message= FALSE, warning=FALSE}
 if (!require('corrplot')) install.packages('corrplot'); library('corrplot')
 if (!require('ggcorrplot')) install.packages('ggcorrplot'); library('ggcorrplot')
 
@@ -135,14 +135,13 @@ p.mat <- cor.mtest(breast_data_def[c(2:31)])
 
 ```
 
-```{r}
+```{r  message= FALSE, warning=FALSE}
 if (!require('ggcorrplot')) install.packages('ggcorrplot'); library('ggcorrplot')
 
 M <- cor(breast_data_def[c(2:31)])
 
 corrplot(M, type="upper", order="hclust", method="circle",
          p.mat = p.mat, sig.level = 0.05, insig = "blank", tl.cex  = 0.65)
-
 ```
 
 Revisando la información de correlación, se puede ver que **Area_mean**, **Radius_mean**, **Perimeter_mean**, **Area_worst**, **Radius_worst** y **Perimeter_worst** tienen una correlación de 1. Asimismo, **Area_se**, **Radius_se** y **Permiter_se** también tienen una correlación de 1. Lo mismo ocurre entre **Concave.points_worst**, **Concave.points_mean** y **Concavity_mean**. En todos los casos se puede eliminar todas ellas, menos una de cada grupo.
@@ -150,23 +149,20 @@ Revisando la información de correlación, se puede ver que **Area_mean**, **Rad
 ```{r}
 
 d_num <- as.numeric(breast_data_def[,1]) 
-col_eliminar <- c("Radius_mean", "Perimeter_mean", "Area_worst", "Radius_worst", "Radius_se", "Permiter_se", "Concave.points_worst", "Concave.points_mean","Diagnosis")
+col_eliminar <- c("Radius_mean", "Perimeter_mean", "Area_worst", "Radius_worst", "Radius_se", "Permiter_se", "Concave.points_worst", "Concave.points_mean")
 
 breast_data_def_corr <- breast_data_def[, !(names(breast_data_def) %in% col_eliminar)]
-breast_data_def_corr["diagnosis_num"] <- d_num
 dim(breast_data_def_corr)
 
 ```
 
 Finalmente, el conjunto de datos tendrá 24 atributos sobre los que se hará el análisis posterior.
 
-
 ******
 # Limpieza de los datos
 ******
 
 ## Identificación y tratamiento de elementos vacíos, ceros o nulos
-
 
 
 Los datos están limpios y no hay valores perdidos. Si revisamos el número de elementos nulos se puede observar que no hay:
@@ -188,63 +184,125 @@ En la siguiente imagen se pueden observar los valores extremos (_outliers_) de c
 
 ```{r message= FALSE, warning=FALSE}
 
-boxplot(scale(breast_data_def_corr[1:5]), xlab ="variables", cex.axis=0.75, ylab = "Rango de Valores", col="blue", main="Información sobre anomalías y valores extremos")
+boxplot(scale(breast_data_def_corr[2:5]), xlab ="variables", cex.axis=0.75, ylab = "Rango de Valores", col="blue", main="Información sobre anomalías y valores extremos")
 boxplot(scale(breast_data_def_corr[6:10]), xlab ="variables", cex.axis=0.55, ylab = "Rango de Valores", col="blue", main="Información sobre anomalías y valores extremos")
 boxplot(scale(breast_data_def_corr[11:15]), xlab ="variables", cex.axis=0.75, ylab = "Rango de Valores", col="blue", main="Información sobre anomalías y valores extremos")
 boxplot(scale(breast_data_def_corr[16:20]), xlab ="variables", cex.axis=0.60, ylab = "Rango de Valores", col="blue", main="Información sobre anomalías y valores extremos")
 boxplot(scale(breast_data_def_corr[21:23]), xlab ="variables", cex.axis=0.75, ylab = "Rango de Valores", col="blue", main="Información sobre anomalías y valores extremos")
 ```
 
-
-
-IMPORTANTE: se podría comprobar si estos valores outliers corresponde con tumores malignos. Si es así, no se podría eliminar... Dejar para más adelante.
-
-
+Se puede observar que en todas los diagramas hay datos atípicos, lo que no quiere decir que sean erróneos.
 
 
 ******
 # Análisis de los datos
 ******
 
-
 ## Planificación de los análisis a aplicar
 
+A continuación se va a realizar el análisis descriptivo, estadístico y de supervivencia de los datos. En el primero de ellos se van a analizar la media, mediana y desviación estándar de las muestras. En las gráficos de cajas presentados anteriormente, se puede apreciar que los valores de la mediana de los atributos están muy cerca de la mitad de la caja, indicando que los valores de los datos son más o menos simétricos. Asimismo, se presentan las medias, medianas e información de os cuartiles de cada  atributo:
+
+```{r message= FALSE, warning=FALSE}
+summary(breast_data_def_corr)
+
+```
+
+El análisis estadístico inferencial tiene por objetivo modelar los datos a través de una distribución conocida. Partiendo de la premisa que el conjunto de datos estudiado representa una fracción de la totalidad de una población, su objetivo es inferir cómo es esa población, asumiendo un grado de error en las estimaciones por el hecho de disponer de una muestra reducida de los datos. En el siguiente subapartado se comprobará la normalidad y homogeneidad de la varianza.
 
 
 ## Normalidad y homogeneidad de la varianza
-Para comprobar cuales de las variables cuantitativas de las que disponemos se empelara la prueba de normalidad de AndersonDarling. Si la variable tiene un p-valor superior a 0.05 se considera que sigue una distribucion normal.  
-if (!require('nortest')) install.packages('nortest'); library('nortest')
+
+Para comprobar cuales de las variables cuantitativas de las que disponemos sigue una distribución normal se empleará la prueba de normalidad de **Shapiro-Wilk**. Si la variable tiene un p-valor superior a 0.05 se considera que sigue una distribucion normal:  
+
+```{r message= FALSE, warning=FALSE}
 
 alpha = 0.05
 col.names = colnames(breast_data_def_corr)
 
 for (i in 1:ncol(breast_data_def_corr)) {
-  if (i == 1) cat("Variables que no siguen una distribución normal:\n")
+  if (i == 1) cat("Variables que no siguen una distribución normal:\n\n")
     if (is.integer(breast_data_def_corr[,i]) | is.numeric(breast_data_def_corr[,i])) {
-      p_val = ad.test(breast_data_def_corr[,i])$p.value
+      p_val = shapiro.test(breast_data_def_corr[,i])$p.value
       if (p_val < alpha) {
         cat(col.names[i])
-        # Format output
-        if (i < ncol(breast_data_def_corr) - 1) cat(", ")
+        
+        if (i < ncol(breast_data_def_corr)) cat(", ")
         if (i %% 3 == 0) cat("\n")
     }
   }
 }
 
+```
+
+Se puede observar que la mayoría de los atributos no sigue una distribución normal. En cuanto a la homogeneidad de la varianza, se va a utilizar el test de **Fligner-Killeen**, debido a ese mismo hecho. Para ello, se van a comparar las varianzas para un diagnóstico benigno y maligno de los distintos atributos. Así:
+
+```{r  message= FALSE, warning=FALSE}
+
+alpha = 0.05
+col.names = colnames(breast_data_def_corr)
+datosB <- filter(breast_data_def_corr, breast_data_def_corr$Diagnosis=="B")
+datosM <- filter(breast_data_def_corr, breast_data_def_corr$Diagnosis=="M")
+
+for (i in 2:ncol(breast_data_def_corr)) {
+  if (i == 2) cat("Los siguientes atributos presenta varianzas estadísticamente diferentes para los dos grupos de la variable objetivo:\n\n")
+  a <- datosB[,i]
+  b <- datosM[,i]
+  p_val <- fligner.test(x=list(a,b))$p.value
+  if (p_val < alpha) 
+        cat(col.names[i], "\n")
+}
+
+```
+
+Por ejemplo, si analizamos gráficamente la relación del atributo **Area_mean** con la variable objetivo:
+
+```{r message= FALSE, warning=FALSE}
+if (!require('ggplot2')) install.packages('ggplot2'); library('ggplot2')
+
+ggplot(data=breast_data_def_corr,aes(x=Diagnosis,y=Area_mean,fill=Diagnosis))+geom_boxplot()+ggtitle("Media del área diagnóstico Benigno vs Maligno") 
+```
+
+Se observa cómo la varianza es mayor en los casos de malignidad, aunque la mediana está centrada en ambos diagnósticos. Existen algunos valores atípicos.
+
+Si analizamos gráficamente la relación del atributo **Concavity_mean** con la variable objetivo:
+
+```{r message= FALSE, warning=FALSE}
+if (!require('ggplot2')) install.packages('ggplot2'); library('ggplot2')
+
+ggplot(data=breast_data_def_corr,aes(x=Diagnosis,y=Concavity_mean,fill=Diagnosis))+geom_boxplot()+ggtitle("Media de la concavidad diagnóstico Benigno vs Maligno") 
+```
+
+También se observa cómo la varianza es mayor en los casos de malignidad, aunque la mediana está centrada en ambos diagnósticos. Existen muchos valores atípicos (mayores en el caso de benignidad, que pueden corresponder con errores en las medidas).
+
+Si por ejemplo comprobamos un atributo que no está en la lista anterior, como **Texture_mean**:
+
+
+```{r message= FALSE, warning=FALSE}
+if (!require('ggplot2')) install.packages('ggplot2'); library('ggplot2')
+
+ggplot(data=breast_data_def_corr,aes(x=Diagnosis,y=Texture_mean,fill=Diagnosis))+geom_boxplot()+ggtitle("Media de la textura diagnóstico Benigno vs Maligno") 
+```
+
+Se puede ver como la varianza es similar en ambos casos del diagnóstico. También se observa que hay valores atípicos.
+
 
 ## Pruebas estadísticas
-Puesto que las variables no se ajustan a una distribucion normal, se empleara el coecifiente de correlacion de Spearman para comprobar que variables muestran una mayor relacion con el tipo de tumor. 
+
+Puesto que las variables no se ajustan a una distribucion normal, se empleara el coecifiente de correlacion de **Spearman** para comprobar qué variables muestran una mayor relación con el tipo de tumor. 
+
+```{r message= FALSE, warning=FALSE}
+
 corr_matrix <- matrix(nc = 2, nr = 0)
 colnames(corr_matrix) <- c("estimate", "p-value")
 # Calcular el coeficiente de correlación para cada variable cuantitativa
 # con respecto al campo "diagnosis_num"
-for (i in 1:(ncol(breast_data_def_corr) - 1)) {
+for (i in 2:(ncol(breast_data_def_corr))) {
   if (is.integer(breast_data_def_corr[,i]) | is.numeric(breast_data_def_corr[,i])) {
-    spearman_test = cor.test(breast_data_def_corr[,i],                 breast_data_def_corr[,length(breast_data_def_corr)],
+    spearman_test = cor.test(breast_data_def_corr[,i], as.numeric(breast_data_def_corr[,1]),
     method = "spearman",exact=FALSE)
     corr_coef = spearman_test$estimate
     p_val = spearman_test$p.value
-    # Add row to matrix
+    # Se añade la fila a la matriz
     pair = matrix(ncol = 2, nrow = 1)
     pair[1][1] = corr_coef
     pair[2][1] = p_val
@@ -253,10 +311,65 @@ for (i in 1:(ncol(breast_data_def_corr) - 1)) {
   }
 }
 
-Ordenamos los valores en base a su correlacion, para conocer que variables se correlacionan mas con el diagnostico
+cat("Se ordenan los valores en base a su correlacion, para conocer que variables se correlacionan mas con el diagnostico: \n")
 corr_matrix[sort(abs(corr_matrix[,1]),decreasing=T,index.return=T)[[2]],]
 
-Se aprecia que las variables que mas influyen son **Perimeter_worst**, **Area_mean**, **Concavity_mean**, **Area_se** y **Concavity_worst**
+```
+
+Se aprecia que las variables que más influyen son **Perimeter_worst**, **Area_mean**, **Concavity_mean**, **Area_se** y **Concavity_worst**, que, además, están en el listado de atributos que presentan varianzas estadísticamente diferentes para los dos grupos de la variable objetivo (la diferencia de comportamiento respecto a los valores de la variable objetivo se mostró gráficamente para algunos de ellos).
+
+A continuación se van a presentar distintos gráficos estadísticos que podrán ayudar a decidir/clasificar una muestra en función de los valores de los atributos anteriores:
+
+```{r message= FALSE, warning=FALSE}
+if (!require('ggplot2')) install.packages('ggplot2'); library('ggplot2')
+
+ggplot(breast_data_def_corr, aes(x = Perimeter_worst)) + geom_histogram(binwidth = 10, col='black', fill='blue') + facet_wrap(~ Diagnosis)+ggtitle("Perímetro peor para diagnósticos Benignos vs Malignos") +labs(x="Perímetro peor", y="Número de mujeres") 
+```
+
+Se observa que las mujeres con diagnóstico benigno tienen un valor de **Perimeter_worst** alrededor del valor 87, mientras que las que tienen un diagnóstico maligno, el valor está por encima de 110.
+
+```{r  message= FALSE, warning=FALSE}
+datos_PW_menos100_B <- filter(breast_data_def_corr, breast_data_def_corr$Perimeter_worst <= 100 & breast_data_def_corr$Diagnosis == "B")
+total_B <- filter(breast_data_def_corr, breast_data_def_corr$Diagnosis == "B")
+valorB <- (nrow(datos_PW_menos100_B)/nrow(total_B))*100
+cat("El porcentaje de mujeres con valor inferior a 100 en el atributo peor perímetro (Perimeter_worst) y diagnóstico benigno es: " , valorB , "%")
+
+datos_PW_menos100_M <- filter(breast_data_def_corr, breast_data_def_corr$Perimeter_worst <= 100 & breast_data_def_corr$Diagnosis == "M")
+total_M <- filter(breast_data_def_corr, breast_data_def_corr$Diagnosis == "M")
+valorM <- (nrow(datos_PW_menos100_M)/nrow(total_M))*100
+cat("El porcentaje de mujeres con valor inferior a 100 en el atributo peor perímetro (Perimeter_worst) y diagnóstico maligno es: " , valorM , "%")
+```
+
+
+Si analizamos gráficamente el valor de la media del área:
+
+
+```{r message= FALSE, warning=FALSE}
+if (!require('ggplot2')) install.packages('ggplot2'); library('ggplot2')
+
+ggplot(breast_data_def_corr, aes(x = Area_mean)) + geom_histogram(binwidth = 45, col='black', fill='blue') + facet_wrap(~ Diagnosis)+ggtitle("Media de área para diagnósticos Benignos vs Malignos") +labs(x="Media de área", y="Número de mujeres") 
+```
+
+Se observa que las mujeres con diagnóstico benigno tienen un valor de **Area_mean** mayoritariamente inferior a 600, mientras que las que tienen un diagnóstico maligno, mayoritariamente tiene un valor del atributo por encima de 600.
+
+```{r  message= FALSE, warning=FALSE}
+datos_AM_menos600_B <- filter(breast_data_def_corr, breast_data_def_corr$Area_mean <= 600 & breast_data_def_corr$Diagnosis == "B")
+total_B <- filter(breast_data_def_corr, breast_data_def_corr$Diagnosis == "B")
+valorAMB <- (nrow(datos_AM_menos600_B)/nrow(total_B))*100
+cat("El porcentaje de mujeres con valor inferior a 600 en el atributo media de área (Area_mean) y diagnóstico benigno es: " , valorAMB , "%")
+
+datos_AM_menos600_M <- filter(breast_data_def_corr, breast_data_def_corr$Area_mean <= 600 & breast_data_def_corr$Diagnosis == "M")
+total_M <- filter(breast_data_def_corr, breast_data_def_corr$Diagnosis == "M")
+valorAMM <- (nrow(datos_AM_menos600_M)/nrow(total_M))*100
+cat("El porcentaje de mujeres con valor inferior a 100 en el atributo media de área (Area_mean) y diagnóstico maligno es: " , valorAMM , "%")
+```
+
+
+
+
+
+
+------------------------------------------------------------------------------------------------------------------------
 
 
 Anteriormente se ha sujerido la hipotesis de que los valores extremos indican  tumores malignos. Se empleara la columna **perimeter_worst** puesto que es la que mayor correlacion presenta. .Para confirmar o descartar esta hipotesis se empleara un test de Mann-Whitney, puesto que los valores no siguen una distribucion normal y el numero de muestras es pequeño.
