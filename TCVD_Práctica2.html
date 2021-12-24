@@ -484,7 +484,7 @@ ggplot(data=breast_data_def_corr,aes(x=Diagnosis,y=Texture_mean,fill=Diagnosis))
 <pre class="r"><code>corr_matrix &lt;- matrix(nc = 2, nr = 0)
 colnames(corr_matrix) &lt;- c(&quot;estimate&quot;, &quot;p-value&quot;)
 # Calcular el coeficiente de correlación para cada variable cuantitativa
-# con respecto al campo &quot;diagnosis_num&quot;
+# con respecto al campo &quot;Diagnosis&quot;
 for (i in 2:(ncol(breast_data_def_corr))) {
   if (is.integer(breast_data_def_corr[,i]) | is.numeric(breast_data_def_corr[,i])) {
     spearman_test = cor.test(breast_data_def_corr[,i], as.numeric(breast_data_def_corr[,1]),
@@ -500,8 +500,8 @@ for (i in 2:(ncol(breast_data_def_corr))) {
   }
 }
 
-cat(&quot;Se ordenan los valores en base a su correlacion, para conocer que variables se correlacionan mas con el diagnostico: \n&quot;)</code></pre>
-<pre><code>## Se ordenan los valores en base a su correlacion, para conocer que variables se correlacionan mas con el diagnostico:</code></pre>
+cat(&quot;Se ordenan los valores en base a su correlación, para conocer qué variables se correlacionan más con el diagnóstico: \n&quot;)</code></pre>
+<pre><code>## Se ordenan los valores en base a su correlación, para conocer qué variables se correlacionan más con el diagnóstico:</code></pre>
 <pre class="r"><code>corr_matrix[sort(abs(corr_matrix[,1]),decreasing=T,index.return=T)[[2]],]</code></pre>
 <pre><code>##                            estimate       p-value
 ## Perimeter_worst          0.79631860 6.742652e-126
@@ -528,7 +528,225 @@ cat(&quot;Se ordenan los valores en base a su correlacion, para conocer que vari
 ## Fractal_dimension_mean  -0.02590293  5.374814e-01
 ## Texture_se               0.01941890  6.439108e-01</code></pre>
 <p>Se aprecia que las variables que más influyen son <strong>Perimeter_worst</strong>, <strong>Area_mean</strong>, <strong>Concavity_mean</strong>, <strong>Area_se</strong> y <strong>Concavity_worst</strong>, que, además, están en el listado de atributos que presentan varianzas estadísticamente diferentes para los dos grupos de la variable objetivo (la diferencia de comportamiento respecto a los valores de la variable objetivo se mostró gráficamente para algunos de ellos).</p>
-<p>A continuación se van a presentar distintos gráficos estadísticos que podrán ayudar a decidir/clasificar una muestra en función de los valores de los atributos anteriores:</p>
+<hr />
+<p>Asimismo, anteriormente se ha sugerido la hipótesis de que los valores extremos indican tumores malignos. Se empleará la columna <strong>Perimeter_worst</strong> puesto que es la que mayor correlación presenta con la variable objetivo, para confirmar o descartar esta hipótesis a través del test de <strong>Mann-Whitney</strong>, puesto que los valores no siguen una distribucion normal y el número de muestras es pequeño.</p>
+<pre class="r"><code>out_perimeter_worst &lt;- boxplot.stats(breast_data_def_corr$Perimeter_worst)$out
+out_perimeter_worst_ind &lt;- which(breast_data_def_corr$Perimeter_worst %in% out_perimeter_worst)
+out_perimeter_diagnosis &lt;- breast_data_def_corr[out_perimeter_worst_ind,]
+in_perimeter_worst &lt;- subset(breast_data_def_corr$Perimeter_worst, !(breast_data_def_corr$Perimeter_worst %in% out_perimeter_diagnosis$Perimeter_worst))
+in_perimeter_worst_ind &lt;- which(breast_data_def_corr$Perimeter_worst %in% in_perimeter_worst)
+in_perimeter_diagnosis &lt;- breast_data_def_corr[in_perimeter_worst_ind,]
+
+wilcox.test(as.numeric(out_perimeter_diagnosis$Diagnosis),as.numeric(in_perimeter_diagnosis$Diagnosis), alternative = &quot;greater&quot;)</code></pre>
+<pre><code>## 
+##  Wilcoxon rank sum test with continuity correction
+## 
+## data:  as.numeric(out_perimeter_diagnosis$Diagnosis) and as.numeric(in_perimeter_diagnosis$Diagnosis)
+## W = 6832.5, p-value = 1.809e-07
+## alternative hypothesis: true location shift is greater than 0</code></pre>
+<p>En este caso el p-valor es menor que 0.5, por lo que aceptamos la hipotesis de que los valores extremos indican tumores malignos.</p>
+<hr />
+<p>A continuación se van a utilizar diferentes métodos de clasificación sobre los atributos indicados anteriormente del conjunto de datos. Posteriormente, se evaluará la calidad de los método usados mediante Validación Cruzada o K-fold Cross Validation.</p>
+<p>Inicialmente se van a crear los grupos de entrenamiento y test, el primero con 2/3 de los datos y el segundo con 1/3 de los datos originales:</p>
+<pre class="r"><code>if (!require(&#39;caTools&#39;)) install.packages(&#39;caTools&#39;); library(&#39;caTools&#39;)
+
+data_to_analyze &lt;- breast_data_def_corr[c(&#39;Diagnosis&#39;, &#39;Perimeter_worst&#39;, &#39;Area_mean&#39;, &#39;Concavity_mean&#39;, &#39;Area_se&#39;, &#39;Concavity_worst&#39;)]
+set.seed(1234)
+split &lt;- sample.split(data_to_analyze$Diagnosis, SplitRatio = 0.75)
+training_set &lt;- subset(data_to_analyze, split == TRUE)
+test_set &lt;- subset(data_to_analyze, split == FALSE)
+dim(training_set)</code></pre>
+<pre><code>## [1] 427   6</code></pre>
+<pre class="r"><code>dim(test_set)</code></pre>
+<pre><code>## [1] 142   6</code></pre>
+<p>La distribución de muestras malignas y benignas debe ser simétrica en ambos conjuntos:</p>
+<pre class="r"><code>cat(&quot;Porcentaje de muestras benignas y malignas en el conjunto de entrenamiento: &quot;)</code></pre>
+<pre><code>## Porcentaje de muestras benignas y malignas en el conjunto de entrenamiento:</code></pre>
+<pre class="r"><code>prop.table(table(training_set$Diagnosis))</code></pre>
+<pre><code>## 
+##         B         M 
+## 0.6276347 0.3723653</code></pre>
+<pre class="r"><code>cat(&quot;\nPorcentaje de muestras benignas y malignas en el conjunto de test: &quot;)</code></pre>
+<pre><code>## 
+## Porcentaje de muestras benignas y malignas en el conjunto de test:</code></pre>
+<pre class="r"><code>prop.table(table(test_set$Diagnosis))</code></pre>
+<pre><code>## 
+##         B         M 
+## 0.6267606 0.3732394</code></pre>
+<div id="modelo-de-regresión-logística" class="section level3" number="4.3.1">
+<h3 number="4.3.1"><span class="header-section-number">4.3.1</span> Modelo de Regresión Logística</h3>
+<p>La <strong>Regresión Logística</strong> calcula las probabilidades de ocurrencia de alguna de las clases del modelo a partir del uso de la función logística. Inicialmente se entrena el modelo y se observan los datos estadísticos:</p>
+<pre class="r"><code>if (!require(&#39;stats&#39;)) install.packages(&#39;stats&#39;); library(&#39;stats&#39;)
+
+clasificadorRL &lt;- glm(Diagnosis ~ ., family = binomial, data = training_set)</code></pre>
+<p>Una vez que el clasificador está entrenado, se puede usar para predecir el resultado. Ya que la regresión logística ofrece como resultado las probabilidades de ocurrencia de cada clase, se va a tomar como umbral el valor de 0.5, de modo que cualquier valor por encima de esa probabilidad se tome como 1 “tumor benigno”, y cualquier valor por debajo como 0 como “tumor maligno”:</p>
+<pre class="r"><code>if (!require(&#39;caret&#39;)) install.packages(&#39;caret&#39;); library(&#39;caret&#39;)
+
+pred_train_RL &lt;- predict(clasificadorRL, type = &#39;response&#39;, ndata = training_set)
+pred_train_RL &lt;- ifelse(pred_train_RL &gt; 0.5, 1, 0)
+pred_train_RL &lt;- factor(pred_train_RL, levels = c(&quot;0&quot;, &quot;1&quot;), labels = c(&quot;B&quot;, &quot;M&quot;))</code></pre>
+<p>Analizando la matriz de confusión para evaluar la calidad de la predicción:</p>
+<pre class="r"><code>matrizConfusion_train_RL &lt;- confusionMatrix(data=pred_train_RL, reference=training_set$Diagnosis, positive = &quot;B&quot;,
+           dnn = c(&#39;Predicción&#39;, &#39;Realidad&#39;))
+
+matrizConfusion_train_RL</code></pre>
+<pre><code>## Confusion Matrix and Statistics
+## 
+##           Realidad
+## Predicción   B   M
+##          B 259  13
+##          M   9 146
+##                                          
+##                Accuracy : 0.9485         
+##                  95% CI : (0.923, 0.9674)
+##     No Information Rate : 0.6276         
+##     P-Value [Acc &gt; NIR] : &lt;2e-16         
+##                                          
+##                   Kappa : 0.8892         
+##                                          
+##  Mcnemar&#39;s Test P-Value : 0.5224         
+##                                          
+##             Sensitivity : 0.9664         
+##             Specificity : 0.9182         
+##          Pos Pred Value : 0.9522         
+##          Neg Pred Value : 0.9419         
+##              Prevalence : 0.6276         
+##          Detection Rate : 0.6066         
+##    Detection Prevalence : 0.6370         
+##       Balanced Accuracy : 0.9423         
+##                                          
+##        &#39;Positive&#39; Class : B              
+## </code></pre>
+<p>Se observa que de 427 mujeres del grupo de entrenamiento, con el modelo usado se han clasificado correctamente 405 (259 verdaderos positivos y 146 verdaderos negativos). Asimismo hay 9 falsos negativos (es decir, 9 mujeres que no tenían cáncer de mama que se predijeron que lo tenían) y 13 falsos positivos (es decir, 13 mujeres que tenían cáncer de mama y que se predijeron que no lo tenían). El clasificador tienen una precisión de 0.94% (mayor al 62% que es el número de mujeres sin cáncer de mama). Por otro lado, el clasificador tiene una sensibilidad del 0.96% (verdaderos positivos identificados).</p>
+<p>Si hacemos la misma prueba sobre el grupo de test:</p>
+<pre class="r"><code>if (!require(&#39;caret&#39;)) install.packages(&#39;caret&#39;); library(&#39;caret&#39;)
+
+pred_test_RL &lt;- predict(clasificadorRL, type = &#39;response&#39;, newdata = test_set)
+pred_test_RL &lt;- ifelse(pred_test_RL &gt; 0.5, 1, 0)
+pred_test_RL &lt;- factor(pred_test_RL, levels = c(&quot;0&quot;, &quot;1&quot;), labels = c(&quot;B&quot;, &quot;M&quot;))
+
+matrizConfusion_test_RL &lt;- confusionMatrix(data=pred_test_RL, reference=test_set$Diagnosis, positive = &quot;B&quot;,
+           dnn = c(&#39;Predicción&#39;, &#39;Realidad&#39;))
+
+matrizConfusion_test_RL</code></pre>
+<pre><code>## Confusion Matrix and Statistics
+## 
+##           Realidad
+## Predicción  B  M
+##          B 86  4
+##          M  3 49
+##                                         
+##                Accuracy : 0.9507        
+##                  95% CI : (0.9011, 0.98)
+##     No Information Rate : 0.6268        
+##     P-Value [Acc &gt; NIR] : &lt;2e-16        
+##                                         
+##                   Kappa : 0.8942        
+##                                         
+##  Mcnemar&#39;s Test P-Value : 1             
+##                                         
+##             Sensitivity : 0.9663        
+##             Specificity : 0.9245        
+##          Pos Pred Value : 0.9556        
+##          Neg Pred Value : 0.9423        
+##              Prevalence : 0.6268        
+##          Detection Rate : 0.6056        
+##    Detection Prevalence : 0.6338        
+##       Balanced Accuracy : 0.9454        
+##                                         
+##        &#39;Positive&#39; Class : B             
+## </code></pre>
+<p>Se observa que de 142 mujeres del grupo de test, con el modelo usado se han clasificado correctamente 135 (86 verdaderos positivos y 49 verdaderos negativos). Asimismo hay 3 falsos negativos (es decir, 3 mujeres que no tenían cáncer de mama que se predijeron que lo tenían) y 4 falsos positivos (es decir, 4 mujeres que tenían cáncer de mama y que se predijeron que no lo tenían). El clasificador tienen una precisión de 0.95% (mayor al 62% que es el número de mujeres sin cáncer de mama). Por otro lado, el clasificador tiene una sensibilidad del 0.96% (verdaderos positivos identificados).</p>
+</div>
+<div id="modelo-naive-bayes" class="section level3" number="4.3.2">
+<h3 number="4.3.2"><span class="header-section-number">4.3.2</span> Modelo Naive Bayes</h3>
+</div>
+<div id="modelo-de-árbol-de-decisión" class="section level3" number="4.3.3">
+<h3 number="4.3.3"><span class="header-section-number">4.3.3</span> Modelo de Árbol de Decisión</h3>
+</div>
+<div id="modelo-random-forests" class="section level3" number="4.3.4">
+<h3 number="4.3.4"><span class="header-section-number">4.3.4</span> Modelo Random Forests</h3>
+<p>La clasificación <strong>Random Forests</strong> construye al azar una gran cantidad de árboles de decisión (<strong>ntree</strong> en la función usada) sobre un mismo conjunto de datos, y la decisión final de la clasificación es tomada a partir de calcular el voto de la mayoría de las predicciones ofrecidas por cada uno de los árboles que conforman el bosque.</p>
+<pre class="r"><code>if (!require(&#39;randomForest&#39;)) install.packages(&#39;randomForest&#39;); library(&#39;randomForest&#39;)
+
+clasificadorRF &lt;- randomForest(Diagnosis ~ ., data = training_set, ntree = 250)</code></pre>
+<p>Analizando el modelo sobre el conjunto de entrenamiento:</p>
+<pre class="r"><code>pred_train_RF &lt;- predict(clasificadorRF, newdata = training_set)
+matrizConfusion_train_RF &lt;- confusionMatrix(data=pred_train_RF, reference=training_set$Diagnosis, positive = &quot;B&quot;,
+           dnn = c(&#39;Predicción&#39;, &#39;Realidad&#39;))
+matrizConfusion_train_RF</code></pre>
+<pre><code>## Confusion Matrix and Statistics
+## 
+##           Realidad
+## Predicción   B   M
+##          B 268   0
+##          M   0 159
+##                                      
+##                Accuracy : 1          
+##                  95% CI : (0.9914, 1)
+##     No Information Rate : 0.6276     
+##     P-Value [Acc &gt; NIR] : &lt; 2.2e-16  
+##                                      
+##                   Kappa : 1          
+##                                      
+##  Mcnemar&#39;s Test P-Value : NA         
+##                                      
+##             Sensitivity : 1.0000     
+##             Specificity : 1.0000     
+##          Pos Pred Value : 1.0000     
+##          Neg Pred Value : 1.0000     
+##              Prevalence : 0.6276     
+##          Detection Rate : 0.6276     
+##    Detection Prevalence : 0.6276     
+##       Balanced Accuracy : 1.0000     
+##                                      
+##        &#39;Positive&#39; Class : B          
+## </code></pre>
+<p>Se observa que de 427 mujeres del grupo de entrenamiento, con el modelo usado se han clasificado correctamente todas ellas. El clasificador tienen una precisión de 0.99% (mayor al 62% que es el número de mujeres sin cáncer de mama). Por otro lado, el clasificador tiene una sensibilidad del 1% (verdaderos positivos identificados).</p>
+<p>Si hacemos la misma prueba sobre el grupo de test:</p>
+<pre class="r"><code>pred_test_RF &lt;- predict(clasificadorRF, newdata = test_set)
+matrizConfusion_test_RF &lt;- confusionMatrix(data=pred_test_RF, reference=test_set$Diagnosis, positive = &quot;B&quot;,
+           dnn = c(&#39;Predicción&#39;, &#39;Realidad&#39;))
+matrizConfusion_test_RF</code></pre>
+<pre><code>## Confusion Matrix and Statistics
+## 
+##           Realidad
+## Predicción  B  M
+##          B 83  4
+##          M  6 49
+##                                           
+##                Accuracy : 0.9296          
+##                  95% CI : (0.8743, 0.9657)
+##     No Information Rate : 0.6268          
+##     P-Value [Acc &gt; NIR] : &lt;2e-16          
+##                                           
+##                   Kappa : 0.8506          
+##                                           
+##  Mcnemar&#39;s Test P-Value : 0.7518          
+##                                           
+##             Sensitivity : 0.9326          
+##             Specificity : 0.9245          
+##          Pos Pred Value : 0.9540          
+##          Neg Pred Value : 0.8909          
+##              Prevalence : 0.6268          
+##          Detection Rate : 0.5845          
+##    Detection Prevalence : 0.6127          
+##       Balanced Accuracy : 0.9286          
+##                                           
+##        &#39;Positive&#39; Class : B               
+## </code></pre>
+<p>Se observa que de 142 mujeres del grupo de test, con el modelo usado se han clasificado correctamente 133 (84 verdaderos positivos y 49 verdaderos negativos). Asimismo hay 5 falsos negativos (es decir, 5 mujeres que no tenían cáncer de mama que se predijeron que lo tenían) y 4 falsos positivos (es decir, 4 mujeres que tenían cáncer de mama y que se predijeron que no lo tenían). El clasificador tienen una precisión de 0.93% (mayor al 62% que es el número de mujeres sin cáncer de mama). Por otro lado, el clasificador tiene una sensibilidad del 0.94% (verdaderos positivos identificados).</p>
+</div>
+<div id="comparación-de-los-modelos-usando-k-fold-cross-validation" class="section level3" number="4.3.5">
+<h3 number="4.3.5"><span class="header-section-number">4.3.5</span> Comparación de los modelos usando K-Fold Cross Validation</h3>
+<hr />
+</div>
+</div>
+</div>
+<div id="representación-de-los-resultados" class="section level1" number="5">
+<h1 number="5"><span class="header-section-number">5</span> Representación de los resultados</h1>
+<hr />
+<p>A continuación se van a presentar distintos gráficos estadísticos que demuestran que los datos seleccionados y usados en los clasificadores tienen calidad suficiente para detectar, a partir de una muestra, si un tumor en la mama es benigno o maligno:</p>
 <pre class="r"><code>if (!require(&#39;ggplot2&#39;)) install.packages(&#39;ggplot2&#39;); library(&#39;ggplot2&#39;)
 
 ggplot(breast_data_def_corr, aes(x = Perimeter_worst)) + geom_histogram(binwidth = 10, col=&#39;black&#39;, fill=&#39;blue&#39;) + facet_wrap(~ Diagnosis)+ggtitle(&quot;Perímetro peor para diagnósticos Benignos vs Malignos&quot;) +labs(x=&quot;Perímetro peor&quot;, y=&quot;Número de mujeres&quot;) </code></pre>
@@ -560,17 +778,7 @@ total_M &lt;- filter(breast_data_def_corr, breast_data_def_corr$Diagnosis == &qu
 valorAMM &lt;- (nrow(datos_AM_menos600_M)/nrow(total_M))*100
 cat(&quot;El porcentaje de mujeres con valor inferior a 100 en el atributo media de área (Area_mean) y diagnóstico maligno es: &quot; , valorAMM , &quot;%&quot;)</code></pre>
 <pre><code>## El porcentaje de mujeres con valor inferior a 100 en el atributo media de área (Area_mean) y diagnóstico maligno es:  14.62264 %</code></pre>
-<hr />
-<p>Anteriormente se ha sujerido la hipotesis de que los valores extremos indican tumores malignos. Se empleara la columna <strong>perimeter_worst</strong> puesto que es la que mayor correlacion presenta. .Para confirmar o descartar esta hipotesis se empleara un test de Mann-Whitney, puesto que los valores no siguen una distribucion normal y el numero de muestras es pequeño.</p>
-<p>out_perimeter_worst &lt;- boxplot.stats(breast_data_def_corr<span class="math inline">\(Perimeter_worst)\)</span>out out_perimeter_worst_ind &lt;- which(breast_data_def_corr<span class="math inline">\(Perimeter_worst %in% out_perimeter_worst) out_perimeter_diagnosis &lt;- breast_data_def_corr[out_perimeter_worst_ind,] in_perimeter_worst &lt;- subset(breast_data_def_corr\)</span>Perimeter_worst, !(breast_data_def_corr<span class="math inline">\(Perimeter_worst %in% out_perimeter_diagnosis\)</span>Perimeter_worst)) in_perimeter_worst_ind &lt;- which(breast_data_def_corr$Perimeter_worst %in% in_perimeter_worst) in_perimeter_diagnosis &lt;- breast_data_def_corr[in_perimeter_worst_ind,]</p>
-<p>wilcox.test( out_perimeter_diagnosis<span class="math inline">\(diagnosis_num,in_perimeter_diagnosis\)</span>diagnosis_num, alternative = “greater”)</p>
-<p>En este caso el p-valor es menor que 0.5, por lo que aceptamos la hipotesis de que los valores extremos indican tumores malignos.</p>
-<hr />
-</div>
-</div>
-<div id="representación-de-los-resultados" class="section level1" number="5">
-<h1 number="5"><span class="header-section-number">5</span> Representación de los resultados</h1>
-<hr />
+<p>AÑADIR RESTO DE ESTUDIO DE LAS VARIABLES PARA DEMOSTRAR QUE SON VARIABLES DE CALIDAD</p>
 <hr />
 </div>
 <div id="conclusiones" class="section level1" number="6">

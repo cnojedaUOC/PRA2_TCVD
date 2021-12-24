@@ -295,7 +295,7 @@ Puesto que las variables no se ajustan a una distribucion normal, se empleara el
 corr_matrix <- matrix(nc = 2, nr = 0)
 colnames(corr_matrix) <- c("estimate", "p-value")
 # Calcular el coeficiente de correlación para cada variable cuantitativa
-# con respecto al campo "diagnosis_num"
+# con respecto al campo "Diagnosis"
 for (i in 2:(ncol(breast_data_def_corr))) {
   if (is.integer(breast_data_def_corr[,i]) | is.numeric(breast_data_def_corr[,i])) {
     spearman_test = cor.test(breast_data_def_corr[,i], as.numeric(breast_data_def_corr[,1]),
@@ -311,14 +311,172 @@ for (i in 2:(ncol(breast_data_def_corr))) {
   }
 }
 
-cat("Se ordenan los valores en base a su correlacion, para conocer que variables se correlacionan mas con el diagnostico: \n")
+cat("Se ordenan los valores en base a su correlación, para conocer qué variables se correlacionan más con el diagnóstico: \n")
 corr_matrix[sort(abs(corr_matrix[,1]),decreasing=T,index.return=T)[[2]],]
 
 ```
 
 Se aprecia que las variables que más influyen son **Perimeter_worst**, **Area_mean**, **Concavity_mean**, **Area_se** y **Concavity_worst**, que, además, están en el listado de atributos que presentan varianzas estadísticamente diferentes para los dos grupos de la variable objetivo (la diferencia de comportamiento respecto a los valores de la variable objetivo se mostró gráficamente para algunos de ellos).
 
-A continuación se van a presentar distintos gráficos estadísticos que podrán ayudar a decidir/clasificar una muestra en función de los valores de los atributos anteriores:
+
+------------------------------------------------------------------------------------------------------------------------
+
+Asimismo, anteriormente se ha sugerido la hipótesis de que los valores extremos indican tumores malignos. Se empleará la columna **Perimeter_worst** puesto que es la que mayor correlación presenta con la variable objetivo, para confirmar o descartar esta hipótesis a través del test de **Mann-Whitney**, puesto que los valores no siguen una distribucion normal y el número de muestras es pequeño.
+
+```{r  message= FALSE, warning=FALSE}
+out_perimeter_worst <- boxplot.stats(breast_data_def_corr$Perimeter_worst)$out
+out_perimeter_worst_ind <- which(breast_data_def_corr$Perimeter_worst %in% out_perimeter_worst)
+out_perimeter_diagnosis <- breast_data_def_corr[out_perimeter_worst_ind,]
+in_perimeter_worst <- subset(breast_data_def_corr$Perimeter_worst, !(breast_data_def_corr$Perimeter_worst %in% out_perimeter_diagnosis$Perimeter_worst))
+in_perimeter_worst_ind <- which(breast_data_def_corr$Perimeter_worst %in% in_perimeter_worst)
+in_perimeter_diagnosis <- breast_data_def_corr[in_perimeter_worst_ind,]
+
+wilcox.test(as.numeric(out_perimeter_diagnosis$Diagnosis),as.numeric(in_perimeter_diagnosis$Diagnosis), alternative = "greater")
+```
+En este caso el p-valor es menor que 0.5, por lo que aceptamos la hipotesis de que los valores extremos indican  tumores malignos.
+
+
+
+------------------------------------------------------------------------------------------------------------------------
+
+
+
+A continuación se van a utilizar diferentes métodos de clasificación sobre los atributos indicados anteriormente del conjunto de datos. Posteriormente, se evaluará la calidad de los método usados mediante Validación Cruzada o K-fold Cross Validation. 
+
+Inicialmente se van a crear los grupos de entrenamiento y test, el primero con 2/3 de los datos y el segundo con 1/3 de los datos originales:
+
+```{r message= FALSE, warning=FALSE}
+if (!require('caTools')) install.packages('caTools'); library('caTools')
+
+data_to_analyze <- breast_data_def_corr[c('Diagnosis', 'Perimeter_worst', 'Area_mean', 'Concavity_mean', 'Area_se', 'Concavity_worst')]
+set.seed(1234)
+split <- sample.split(data_to_analyze$Diagnosis, SplitRatio = 0.75)
+training_set <- subset(data_to_analyze, split == TRUE)
+test_set <- subset(data_to_analyze, split == FALSE)
+dim(training_set)
+dim(test_set)
+
+```
+
+
+La distribución de muestras malignas y benignas debe ser simétrica en ambos conjuntos:
+
+```{r}
+cat("Porcentaje de muestras benignas y malignas en el conjunto de entrenamiento: ")
+prop.table(table(training_set$Diagnosis))
+cat("\nPorcentaje de muestras benignas y malignas en el conjunto de test: ")
+prop.table(table(test_set$Diagnosis))
+```
+
+### Modelo de Regresión Logística
+
+La **Regresión Logística** calcula las probabilidades de ocurrencia de alguna de las clases del modelo a partir del uso de la función logística. Inicialmente se entrena el modelo y se observan los datos estadísticos:
+
+
+```{r message= FALSE, warning=FALSE}
+if (!require('stats')) install.packages('stats'); library('stats')
+
+clasificadorRL <- glm(Diagnosis ~ ., family = binomial, data = training_set)
+
+```
+
+Una vez que el clasificador está entrenado, se puede usar para predecir el resultado. Ya que la regresión logística ofrece como resultado las probabilidades de ocurrencia de cada clase, se va a tomar como umbral el valor de 0.5, de modo que cualquier valor por encima de esa probabilidad se tome como 1 "tumor benigno", y cualquier valor por debajo como 0 como "tumor maligno":
+
+
+```{r message= FALSE, warning=FALSE}
+if (!require('caret')) install.packages('caret'); library('caret')
+
+pred_train_RL <- predict(clasificadorRL, type = 'response', ndata = training_set)
+pred_train_RL <- ifelse(pred_train_RL > 0.5, 1, 0)
+pred_train_RL <- factor(pred_train_RL, levels = c("0", "1"), labels = c("B", "M"))
+
+```
+
+Analizando la matriz de confusión para evaluar la calidad de la predicción:
+
+
+```{r message= FALSE, warning=FALSE}
+matrizConfusion_train_RL <- confusionMatrix(data=pred_train_RL, reference=training_set$Diagnosis, positive = "B",
+           dnn = c('Predicción', 'Realidad'))
+
+matrizConfusion_train_RL
+
+```
+
+Se observa que de 427 mujeres del grupo de entrenamiento, con el modelo usado se han clasificado correctamente 405 (259 verdaderos positivos y 146 verdaderos negativos). Asimismo hay 9 falsos negativos (es decir, 9 mujeres que no tenían cáncer de mama que se predijeron que lo tenían) y 13 falsos positivos (es decir, 13 mujeres que tenían cáncer de mama y que se predijeron que no lo tenían). El clasificador tienen una precisión de 0.94% (mayor al 62% que es el número de mujeres sin cáncer de mama). Por otro lado, el clasificador tiene una sensibilidad del 0.96% (verdaderos positivos identificados).
+
+Si hacemos la misma prueba sobre el grupo de test:
+
+
+```{r message= FALSE, warning=FALSE}
+if (!require('caret')) install.packages('caret'); library('caret')
+
+pred_test_RL <- predict(clasificadorRL, type = 'response', newdata = test_set)
+pred_test_RL <- ifelse(pred_test_RL > 0.5, 1, 0)
+pred_test_RL <- factor(pred_test_RL, levels = c("0", "1"), labels = c("B", "M"))
+
+matrizConfusion_test_RL <- confusionMatrix(data=pred_test_RL, reference=test_set$Diagnosis, positive = "B",
+           dnn = c('Predicción', 'Realidad'))
+
+matrizConfusion_test_RL
+
+```
+
+Se observa que de 142 mujeres del grupo de test, con el modelo usado se han clasificado correctamente 135 (86 verdaderos positivos y 49 verdaderos negativos). Asimismo hay 3 falsos negativos (es decir, 3 mujeres que no tenían cáncer de mama que se predijeron que lo tenían) y 4 falsos positivos (es decir, 4 mujeres que tenían cáncer de mama y que se predijeron que no lo tenían). El clasificador tienen una precisión de 0.95% (mayor al 62% que es el número de mujeres sin cáncer de mama). Por otro lado, el clasificador tiene una sensibilidad del 0.96% (verdaderos positivos identificados).
+
+
+### Modelo Naive Bayes
+
+
+
+### Modelo de Árbol de Decisión
+
+
+### Modelo Random Forests
+
+La clasificación **Random Forests** construye al azar una gran cantidad de árboles de decisión (__ntree__ en la función usada) sobre un mismo conjunto de datos, y la decisión final de la clasificación es tomada a partir de calcular el voto de la mayoría de las predicciones ofrecidas por cada uno de los árboles que conforman el bosque.
+
+```{r message= FALSE, warning=FALSE}
+if (!require('randomForest')) install.packages('randomForest'); library('randomForest')
+
+clasificadorRF <- randomForest(Diagnosis ~ ., data = training_set, ntree = 250)
+
+```
+
+
+Analizando el modelo sobre el conjunto de entrenamiento:
+
+
+```{r message= FALSE, warning=FALSE}
+pred_train_RF <- predict(clasificadorRF, newdata = training_set)
+matrizConfusion_train_RF <- confusionMatrix(data=pred_train_RF, reference=training_set$Diagnosis, positive = "B",
+           dnn = c('Predicción', 'Realidad'))
+matrizConfusion_train_RF
+
+```
+Se observa que de 427 mujeres del grupo de entrenamiento, con el modelo usado se han clasificado correctamente todas ellas. El clasificador tienen una precisión de 0.99% (mayor al 62% que es el número de mujeres sin cáncer de mama). Por otro lado, el clasificador tiene una sensibilidad del 1% (verdaderos positivos identificados).
+
+Si hacemos la misma prueba sobre el grupo de test:
+
+
+```{r message= FALSE, warning=FALSE}
+pred_test_RF <- predict(clasificadorRF, newdata = test_set)
+matrizConfusion_test_RF <- confusionMatrix(data=pred_test_RF, reference=test_set$Diagnosis, positive = "B",
+           dnn = c('Predicción', 'Realidad'))
+matrizConfusion_test_RF
+
+```
+Se observa que de 142 mujeres del grupo de test, con el modelo usado se han clasificado correctamente 133 (84 verdaderos positivos y 49 verdaderos negativos). Asimismo hay 5 falsos negativos (es decir, 5 mujeres que no tenían cáncer de mama que se predijeron que lo tenían) y 4 falsos positivos (es decir, 4 mujeres que tenían cáncer de mama y que se predijeron que no lo tenían). El clasificador tienen una precisión de 0.93% (mayor al 62% que es el número de mujeres sin cáncer de mama). Por otro lado, el clasificador tiene una sensibilidad del 0.94% (verdaderos positivos identificados).
+
+
+### Comparación de los modelos usando K-Fold Cross Validation
+
+
+******
+# Representación de los resultados
+******
+
+A continuación se van a presentar distintos gráficos estadísticos que demuestran que los datos seleccionados y usados en los clasificadores tienen calidad suficiente para detectar, a partir de una muestra, si un tumor en la mama es benigno o maligno:
 
 ```{r message= FALSE, warning=FALSE}
 if (!require('ggplot2')) install.packages('ggplot2'); library('ggplot2')
@@ -364,32 +522,7 @@ valorAMM <- (nrow(datos_AM_menos600_M)/nrow(total_M))*100
 cat("El porcentaje de mujeres con valor inferior a 100 en el atributo media de área (Area_mean) y diagnóstico maligno es: " , valorAMM , "%")
 ```
 
-
-
-
-
-
-------------------------------------------------------------------------------------------------------------------------
-
-
-Anteriormente se ha sujerido la hipotesis de que los valores extremos indican  tumores malignos. Se empleara la columna **perimeter_worst** puesto que es la que mayor correlacion presenta. .Para confirmar o descartar esta hipotesis se empleara un test de Mann-Whitney, puesto que los valores no siguen una distribucion normal y el numero de muestras es pequeño.
-
-out_perimeter_worst <- boxplot.stats(breast_data_def_corr$Perimeter_worst)$out
-out_perimeter_worst_ind <- which(breast_data_def_corr$Perimeter_worst %in% out_perimeter_worst)
-out_perimeter_diagnosis <- breast_data_def_corr[out_perimeter_worst_ind,]
-in_perimeter_worst <- subset(breast_data_def_corr$Perimeter_worst, !(breast_data_def_corr$Perimeter_worst %in% out_perimeter_diagnosis$Perimeter_worst))
-in_perimeter_worst_ind <- which(breast_data_def_corr$Perimeter_worst %in% in_perimeter_worst)
-in_perimeter_diagnosis <- breast_data_def_corr[in_perimeter_worst_ind,]
-
-wilcox.test( out_perimeter_diagnosis$diagnosis_num,in_perimeter_diagnosis$diagnosis_num, alternative = "greater")
-
-En este caso el p-valor es menor que 0.5, por lo que aceptamos la hipotesis de que los valores extremos indican  tumores malignos.
-
-
-
-******
-# Representación de los resultados
-******
+AÑADIR RESTO DE ESTUDIO DE LAS VARIABLES PARA DEMOSTRAR QUE SON VARIABLES DE CALIDAD
 
 
 ******
