@@ -333,7 +333,8 @@ in_perimeter_diagnosis <- breast_data_def_corr[in_perimeter_worst_ind,]
 
 wilcox.test(as.numeric(out_perimeter_diagnosis$Diagnosis),as.numeric(in_perimeter_diagnosis$Diagnosis), alternative = "greater")
 ```
-En este caso el p-valor es menor que 0.5, por lo que aceptamos la hipotesis de que los valores extremos indican  tumores malignos.
+Tomaremos 0.05 como valor de significacion.
+En este caso el p-valor es menor que el  valor de significacion, por lo que aceptamos la hipotesis de que los valores extremos indican  tumores malignos.
 
 
 
@@ -426,10 +427,65 @@ Se observa que de 142 mujeres del grupo de test, con el modelo usado se han clas
 
 
 ### Modelo Naive Bayes
+La clasificacion **naive bayes** se basa en el teorema de bayes para clasificar.
+```
+if (!require('e1071')) install.packages('e1071'); library('e1071')
+clasificadorBayes <- naiveBayes(Diagnosis ~ ., data = training_set)
+```
 
+Analizando el modelo sobre el conjunto de entrenamiento:
 
+```
+pred_valid_bayes <- predict(clasificadorBayes, newdata = training_set)
+
+matrizConfusion_bayes <- confusionMatrix(data=pred_valid_bayes, reference=training_set$Diagnosis, positive = "B", dnn = c('Predicción', 'Realidad'))
+matrizConfusion_bayes
+```
+Se observa que de 427 mujeres del grupo de entrenamiento, con el modelo usado se han clasificado correctamente a 395. El clasificador tienen una precisión de 0.89% (mayor al 62% que es el número de mujeres sin cáncer de mama). Por otro lado, el clasificador tiene una sensibilidad del 96% (verdaderos positivos identificados).
+
+Si hacemos la misma prueba sobre el grupo de test:
+
+```
+pred_valid_bayes <- predict(clasificadorBayes, newdata = test_set)
+matrizConfusion_bayes <- confusionMatrix(data=pred_valid_bayes, reference=test_set$Diagnosis, positive = "B", dnn = c('Predicción', 'Realidad'))
+matrizConfusion_bayes
+```
+
+Se observa que de 142 mujeres del grupo de entrenamiento, con el modelo usado se han clasificado correctamente a 129. Ha habido 10 falsos positivos y 3 falsos negativos. El clasificador tienen una precisión de 0.84% (mayor al 62% que es el número de mujeres sin cáncer de mama). Por otro lado, el clasificador tiene una sensibilidad del 96% (verdaderos positivos identificados).
 
 ### Modelo de Árbol de Decisión
+
+
+La clasificacion **Decision Tree** se basa en reglas logicas a partir de los datos de entrada.
+```
+if (!require('rpart')) install.packages('rpart'); library('rpart')
+clasificadorDT  <- rpart(Diagnosis ~ ., data = training_set)
+```
+
+Analizando el modelo sobre el conjunto de entrenamiento:
+
+```
+pred_valid_tree <- predict(clasificadorDT, newdata = training_set)
+
+pred_df <- data.frame(pred_valid_tree)
+fact = cut(pred_df$B,2,labels=c("M","B"))
+matrizConfusion_tree <- confusionMatrix(data=fact, reference=training_set$Diagnosis, positive = "B", dnn = c('Predicción', 'Realidad'))
+matrizConfusion_tree
+```
+Se observa que de 427 mujeres del grupo de entrenamiento, con el modelo usado se han clasificado correctamente a 403 El clasificador tienen una precisión de 0.91% (mayor al 62% que es el número de mujeres sin cáncer de mama). Por otro lado, el clasificador tiene una sensibilidad del 96% (verdaderos positivos identificados).
+
+Si hacemos la misma prueba sobre el grupo de test:
+
+```
+pred_valid_tree <- predict(clasificadorDT, newdata = test_set)
+pred_df <- data.frame(pred_valid_tree)
+fact = cut(pred_df$B,2,labels=c("M","B"))
+matrizConfusion_tree <- confusionMatrix(data=fact, reference=test_set$Diagnosis, positive = "B", dnn = c('Predicción', 'Realidad'))
+matrizConfusion_tree
+```
+
+Se observa que de 142 mujeres del grupo de entrenamiento, con el modelo usado se han clasificado correctamente a 131 Ha habido 5 falsos positivos y 6 falsos negativos. El clasificador tienen una precisión de 0.86% (mayor al 62% que es el número de mujeres sin cáncer de mama). Por otro lado, el clasificador tiene una sensibilidad del 93% (verdaderos positivos identificados).
+
 
 
 ### Modelo Random Forests
@@ -490,7 +546,7 @@ Se observa que las mujeres con diagnóstico benigno tienen un valor de **Perimet
 datos_PW_menos100_B <- filter(breast_data_def_corr, breast_data_def_corr$Perimeter_worst <= 100 & breast_data_def_corr$Diagnosis == "B")
 total_B <- filter(breast_data_def_corr, breast_data_def_corr$Diagnosis == "B")
 valorB <- (nrow(datos_PW_menos100_B)/nrow(total_B))*100
-cat("El porcentaje de mujeres con valor inferior a 100 en el atributo peor perímetro (Perimeter_worst) y diagnóstico benigno es: " , valorB , "%")
+cat("El porcentaje de mujeres con valor inferior a 100 en el atributo peor perímetro (Perimeter_worst) y diagnóstico benigno es: " , valorB , "%\n")
 
 datos_PW_menos100_M <- filter(breast_data_def_corr, breast_data_def_corr$Perimeter_worst <= 100 & breast_data_def_corr$Diagnosis == "M")
 total_M <- filter(breast_data_def_corr, breast_data_def_corr$Diagnosis == "M")
@@ -514,15 +570,100 @@ Se observa que las mujeres con diagnóstico benigno tienen un valor de **Area_me
 datos_AM_menos600_B <- filter(breast_data_def_corr, breast_data_def_corr$Area_mean <= 600 & breast_data_def_corr$Diagnosis == "B")
 total_B <- filter(breast_data_def_corr, breast_data_def_corr$Diagnosis == "B")
 valorAMB <- (nrow(datos_AM_menos600_B)/nrow(total_B))*100
-cat("El porcentaje de mujeres con valor inferior a 600 en el atributo media de área (Area_mean) y diagnóstico benigno es: " , valorAMB , "%")
+cat("El porcentaje de mujeres con valor inferior a 600 en el atributo media de área (Area_mean) y diagnóstico benigno es: " , valorAMB , "%\n")
 
 datos_AM_menos600_M <- filter(breast_data_def_corr, breast_data_def_corr$Area_mean <= 600 & breast_data_def_corr$Diagnosis == "M")
 total_M <- filter(breast_data_def_corr, breast_data_def_corr$Diagnosis == "M")
 valorAMM <- (nrow(datos_AM_menos600_M)/nrow(total_M))*100
-cat("El porcentaje de mujeres con valor inferior a 100 en el atributo media de área (Area_mean) y diagnóstico maligno es: " , valorAMM , "%")
+cat("El porcentaje de mujeres con valor inferior a 600 en el atributo media de área (Area_mean) y diagnóstico maligno es: " , valorAMM , "%")
 ```
 
-AÑADIR RESTO DE ESTUDIO DE LAS VARIABLES PARA DEMOSTRAR QUE SON VARIABLES DE CALIDAD
+
+
+
+ 
+ Si analizamos gráficamente el valor de la concavidad media:
+
+
+```{r message= FALSE, warning=FALSE}
+if (!require('ggplot2')) install.packages('ggplot2'); library('ggplot2')
+
+ggplot(breast_data_def_corr, aes(x =Concavity_mean)) + geom_histogram(binwidth = 0.05, col='black', fill='blue') + facet_wrap(~ Diagnosis)+ggtitle("Concavidad media para diagnósticos Benignos vs Malignos") +labs(x="Concavidad media", y="Número de mujeres") 
+```
+ 
+ 
+Se observa que las mujeres con diagnóstico benigno tienen un valor de **Concavity_mean** mayoritariamente inferior a 0.1, mientras que las que tienen un diagnóstico maligno, mayoritariamente tiene un valor del atributo por encima de 0.1
+
+```{r  message= FALSE, warning=FALSE}
+datos_AM_menos600_B <- filter(breast_data_def_corr, breast_data_def_corr$Concavity_mean <= 0.1 & breast_data_def_corr$Diagnosis == "B")
+total_B <- filter(breast_data_def_corr, breast_data_def_corr$Diagnosis == "B")
+valorAMB <- (nrow(datos_AM_menos600_B)/nrow(total_B))*100
+cat("El porcentaje de mujeres con valor inferior a 0.1 en el atributo concavidad media (Concavity_mean) y diagnóstico benigno es: " , valorAMB , "%\n")
+
+datos_AM_menos600_M <- filter(breast_data_def_corr, breast_data_def_corr$Concavity_mean <= 0.1 & breast_data_def_corr$Diagnosis == "M")
+total_M <- filter(breast_data_def_corr, breast_data_def_corr$Diagnosis == "M")
+valorAMM <- (nrow(datos_AM_menos600_M)/nrow(total_M))*100
+cat("El porcentaje de mujeres con valor inferior a 0.1 en el atributo concavidad media (Concavity_mean) y diagnóstico maligno es: " , valorAMM , "%")
+```
+ 
+ 
+ 
+ 'Area_se'
+ 
+
+  
+ Si analizamos gráficamente el valor de la media del área:
+
+
+```{r message= FALSE, warning=FALSE}
+if (!require('ggplot2')) install.packages('ggplot2'); library('ggplot2')
+
+ggplot(breast_data_def_corr, aes(x = Area_se)) + geom_histogram(binwidth = 20, col='black', fill='blue') + facet_wrap(~ Diagnosis)+ggtitle("Media de área para diagnósticos Benignos vs Malignos") +labs(x="Media de área", y="Número de mujeres") 
+```
+ 
+ 
+Se observa que las mujeres con diagnóstico benigno tienen un valor de **Area_se** mayoritariamente inferior a 40, mientras que las que tienen un diagnóstico maligno, mayoritariamente tiene un valor del atributo por encima de 40
+
+```{r  message= FALSE, warning=FALSE}
+datos_AM_menos600_B <- filter(breast_data_def_corr, breast_data_def_corr$Area_se <= 40 & breast_data_def_corr$Diagnosis == "B")
+total_B <- filter(breast_data_def_corr, breast_data_def_corr$Diagnosis == "B")
+valorAMB <- (nrow(datos_AM_menos600_B)/nrow(total_B))*100
+cat("El porcentaje de mujeres con valor inferior a 40 en el atributo media de área (Area_se) y diagnóstico benigno es: " , valorAMB , "%\n")
+
+datos_AM_menos600_M <- filter(breast_data_def_corr, breast_data_def_corr$Area_se <= 40 & breast_data_def_corr$Diagnosis == "M")
+total_M <- filter(breast_data_def_corr, breast_data_def_corr$Diagnosis == "M")
+valorAMM <- (nrow(datos_AM_menos600_M)/nrow(total_M))*100
+cat("El porcentaje de mujeres con valor inferior a 40 en el atributo media de área (Area_mean) y diagnóstico maligno es: " , valorAMM , "%")
+```
+ 
+ 
+ 
+ 
+ 'Concavity_worst'
+ 
+  Si analizamos gráficamente el valor de la peor concavidad:
+
+
+```{r message= FALSE, warning=FALSE}
+if (!require('ggplot2')) install.packages('ggplot2'); library('ggplot2')
+
+ggplot(breast_data_def_corr, aes(x = Concavity_worst)) + geom_histogram(binwidth = 0.05, col='black', fill='blue') + facet_wrap(~ Diagnosis)+ggtitle("Peor concavidad para diagnósticos Benignos vs Malignos") +labs(x="Peor concavidad", y="Número de mujeres") 
+```
+ 
+ 
+Se observa que las mujeres con diagnóstico benigno tienen un valor de **Concavity_worst** mayoritariamente inferior a 0.25, mientras que las que tienen un diagnóstico maligno, mayoritariamente tiene un valor del atributo por encima de 0.25.
+
+```{r  message= FALSE, warning=FALSE}
+datos_AM_menos600_B <- filter(breast_data_def_corr, breast_data_def_corr$Concavity_worst <= 0.25 & breast_data_def_corr$Diagnosis == "B")
+total_B <- filter(breast_data_def_corr, breast_data_def_corr$Diagnosis == "B")
+valorAMB <- (nrow(datos_AM_menos600_B)/nrow(total_B))*100
+cat("El porcentaje de mujeres con valor inferior a 0.25 en el atributo peor concavidad (Concavity_worst) y diagnóstico benigno es: " , valorAMB , "%\n")
+
+datos_AM_menos600_M <- filter(breast_data_def_corr, breast_data_def_corr$Concavity_worst <= 0.25 & breast_data_def_corr$Diagnosis == "M")
+total_M <- filter(breast_data_def_corr, breast_data_def_corr$Diagnosis == "M")
+valorAMM <- (nrow(datos_AM_menos600_M)/nrow(total_M))*100
+cat("El porcentaje de mujeres con valor inferior a 0.25 en el atributo peor concavidad (Concavity_worst) y diagnóstico maligno es: " , valorAMM , "%")
+```
 
 
 ******
