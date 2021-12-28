@@ -28,4 +28,7 @@ Los archivos se han distribuidos en las siguientes carpetas:
 
 [1] Calvo M, Subirats L, Pérez D (2019). Introducción a la limpieza y análisis de los datos. Editorial UOC.  
 [2] Sitio web de UCI Machine Learning Repository. [En línea]. Disponible en: https://archive.ics.uci.edu/ml/datasets/Breast+Cancer+Wisconsin+(Diagnostic). Último acceso: 28-dic-2021.
-[3] Dalgaard P. (2002). Introductory Statistics with R. Editorial Springer. ISBN: 0-387-95475-9.
+[3] Dalgaard P. (2002). Introductory Statistics with R. pringer Science & Business Media.
+[4] Squire M. (2015). Clean Data. Packt Publishing Ltd.
+[5] Han J., Kamber M., Pei J. (2012). Data mining: concepts and techniques. Morgan Kaufmann.
+[6] Osborne J. (2010). Data Cleaning Basics: Best Practices in Dealing with Extreme Scores. Newborn and Infant Nursing Reviews; 10 (1): pp. 1527-3369.
