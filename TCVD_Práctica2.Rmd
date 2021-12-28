@@ -22,10 +22,12 @@ knitr::opts_chunk$set(echo = TRUE)
 # Descripción del dataset
 ******
 
-El _dataset_ escogido para el trabajo es el **Breast Cancer Wisconsin (Diagnostic) Data Set** de UCI Machine Learning Reposity (https://archive.ics.uci.edu/ml/datasets/Breast+Cancer+Wisconsin+(Diagnostic)) que analiza la incidencia del cáncer de mama en una población de 569 mujeres.
+El _dataset_ escogido para el trabajo es el **Breast Cancer Wisconsin (Diagnostic) Data Set** de UCI Machine Learning Repository (https://archive.ics.uci.edu/ml/datasets/Breast+Cancer+Wisconsin+(Diagnostic)) que analiza la incidencia del cáncer de mama en una población de 569 mujeres.
 
 **Motivación:** Según la OMS, el cáncer de mama es el tipo de cáncer más común, con más de 2,2 millones de casos en 2020 y cerca de una de cada 12 mujeres enfermarán de cáncer de mama a lo largo de su vida. El cáncer de mama es la principal causa de mortalidad en las mujeres. En 2020, alrededor de 685000 mujeres fallecieron como consecuencia de esa enfermedad. Sin embargo, desde 1980 se han realizado importantes avances en el tratamiento del cáncer de mama debido a la combinación de la **detección precoz** y las terapias eficaces, basadas en cirugía, radioterapia y farmacoterapia (https://www.who.int/es/news-room/fact-sheets/detail/breast-cancer, marzo 2021). En España, según los últimos datos recogidos por el Sistema Europeo de Información del Cáncer (ECIS) de 2020, aproximadamente el 30% de los cánceres diagnosticados en mujeres se originan en la mama (https://www.geicam.org/sala-de-prensa/el-cancer-de-mama-en-espana, 2021). Una detección
 temprana de la presencia de células cancerosas malignas aumenta la posibilidad de vida de las pacientes, sobre todo cuando se localiza un tumor pequeño y aún no ramificado. Para la realización de este estudio, el análisis de los datos obtenidos a partir de la información de estas células puede detectar la malignidad o benignidad de las mismas.
+
+El objetivo de este trabajo es analizar el conjunto de datos indicado anteriormente para ver qué atributos o características influyen mayormente en que un tumor sea considera benigno o maligno y, posteriormente, realizar un clasificador que ayude a indicar si una muestra de tumor es benigna o no. 
 
 **Potencial analítico del conjunto de datos:** Debido a las características del conjunto de datos (atributos de los que dispone) se pueden plantear preguntas que ayuden a comprender mejor cómo afectan los factores clave en la población estudiada y analizar qué variables pueden ser decisivas a la hora de conocer si un tumor es benigno o maligno. Una medida del potencial del conjunto de datos se puede ver en la cantidad de artículos de reconocido prestigio que lo usan en sus investigaciones, como por ejemplo:
 
@@ -47,7 +49,7 @@ breast_data <- read.table("https://archive.ics.uci.edu/ml/machine-learning-datab
 str(breast_data)
 ```
 
-Las características se calculan a partir de una imagen digitalizada de una masa mamaria. Describen características de los núcleos celulares presentes en la imagen. Como se puede observar existen 569 registros con 32 variables, de las cuales el atributo **Diagnosis** es la variable objetivo. De cada célula se obtienen 10 características, existiendo 3 datos para cada una. Estas son:
+Los atributos se calculan a partir de una imagen digitalizada de una masa mamaria. Describen características de los núcleos celulares presentes en la imagen. Como se puede observar existen 569 registros con 32 variables, de las cuales el atributo **Diagnosis** es la variable objetivo. De cada célula se obtienen 10 características, existiendo 3 datos para cada una (con el sufijo __mean__, __se__ y __worst__). Estas son:
 
 **Radius**: media de las distancias del centro a los puntos del perímetro de la célula. Compuesta por los atributos **Radius_mean**, **Radius_se** y **Radius_worst**.  
 **Texture**: desviación estándar de los valores de la escala de grises. Compuesta por los atributos **Texture_mean**, **Texture_se** y **Texture_worst**.  
@@ -65,7 +67,7 @@ Además de las características anteriores de la células analizadas en una mues
 **ID** (int): identificador de la muestra.  
 **Diagnosis** (Factor): variable objetivo en la que "B" indica benignidad y "M", malignidad de la muestra.
 
-El total de mujeres con un diagnóstico benigno o maligno se muestra en la siguiente gráfica:
+El total de mujeres de la muestra con un diagnóstico benigno o maligno se muestra en la siguiente gráfica:
 
 ```{r message= FALSE, warning=FALSE}
 if (!require('ggplot2')) install.packages('ggplot2'); library('ggplot2')
@@ -107,11 +109,55 @@ breast_data_def <- breast_data[c(2:32)]
 
 ```
 
+El conjunto de datos tendrá 31 variables, aunque posteriormente se hará un análisis más profundo para disminuir la dimiensión.
 
-Vamos analizar la correlación entre los atributos para comprobar si se pueden eliminar atributos del conjunto:
+
+******
+# Limpieza de los datos
+******
+
+## Identificación y tratamiento de elementos vacíos, ceros o nulos
+
+Analizando los datos:
+
+```{r message= FALSE, warning=FALSE}
+summary(breast_data_def)
+```
+Se puede observar que no hay datos perdidos (no hay valores NA) y que hay una serie de atributos que tienen valor 0 en alguna muestra, pero todos tienen que ver con la concavidad de la célula, por lo que se asume que son valores correctos.
+
+En caso de que hubieran elementos nulos se puede, entre otros: 
+
+* Eliminar los registros donde existan elementos nulos: solo debe utilizarse cuando el proceso de recogida de datos es aleatorio (en otro caso, produce un sesgo) y si hay datos suficientes (si no, puede afectar a la representación de la muestra).
+* Cambiar los valores nulos por la media, mediana o moda de valores de ese atributo: distorsiona la verdadera distribución de la variable y la correlación entre variables, así como dificulta la estimación de la varianza.
 
 
-```{r  message= FALSE, warning=FALSE}
+## Identificación y tratamiento de valores extremos
+
+En la siguiente imagen se pueden observar los valores extremos (__outliers__) de cada atributo:
+
+```{r message= FALSE, warning=FALSE}
+
+boxplot(scale(breast_data_def[2:5]), xlab ="variables", cex.axis=0.75, ylab = "Rango de Valores", col="blue", main="Información sobre anomalías y valores extremos")
+boxplot(scale(breast_data_def[6:10]), xlab ="variables", cex.axis=0.55, ylab = "Rango de Valores", col="blue", main="Información sobre anomalías y valores extremos")
+boxplot(scale(breast_data_def[11:15]), xlab ="variables", cex.axis=0.60, ylab = "Rango de Valores", col="blue", main="Información sobre anomalías y valores extremos")
+boxplot(scale(breast_data_def[16:20]), xlab ="variables", cex.axis=0.60, ylab = "Rango de Valores", col="blue", main="Información sobre anomalías y valores extremos")
+boxplot(scale(breast_data_def[21:25]), xlab ="variables", cex.axis=0.60, ylab = "Rango de Valores", col="blue", main="Información sobre anomalías y valores extremos")
+boxplot(scale(breast_data_def[26:31]), xlab ="variables", cex.axis=0.50, ylab = "Rango de Valores", col="blue", main="Información sobre anomalías y valores extremos")
+```
+
+Se puede observar que en todos los gráficos hay datos atípicos, lo que no quiere decir que sean erróneos. Si los valores atípicos corresponden con tumores malignos, pueden ser valores correctos y no errores en las medidas. Posteriormente se comprobará que la mayoría de estos valores __outliers__ corresponden con tumores malignos.
+
+
+******
+# Análisis de los datos
+******
+
+## Planificación de los análisis a aplicar
+
+Inicialmente se analizará la correlación total (sin contar con la variable objetivo), para comprobar si se pueden eliminar variables debido a la alta correlación entre ellas. Así:
+
+
+```{r message= FALSE, warning=FALSE}
 if (!require('corrplot')) install.packages('corrplot'); library('corrplot')
 if (!require('ggcorrplot')) install.packages('ggcorrplot'); library('ggcorrplot')
 
@@ -131,83 +177,109 @@ cor.mtest <- function(mat, ...) {
 }
 
 # matriz de los p-values de la correlación
-p.mat <- cor.mtest(breast_data_def[c(2:31)])
+p.mat_total <- cor.mtest(breast_data_def[c(2:31)])
+
+M_total <- cor(breast_data_def[c(2:31)])
+
+corrplot(M_total, type="upper", order="hclust", method="circle",
+         p.mat = p.mat_total, sig.level = 0.05, insig = "blank", tl.cex  = 0.65)
+```
+
+Revisando la información de correlación, se puede ver que **Perimeter_worst**, **Area_mean**, **Radius_mean**, **Perimeter_mean**, **Area_worst** y **Radius_worst** tienen una correlación de 1. Asimismo, **Area_se**, **Radius_se** y **Permiter_se** también tienen una correlación de 1. Lo mismo ocurre entre **Concavity_mean**, **Concave.points_worst** y **Concave.points_mean**. En todos los casos se puede eliminar todas ellas, menos una de cada grupo. Así: 
+
+```{r message= FALSE, warning=FALSE}
+
+d_num <- as.numeric(breast_data_def[,1]) 
+col_eliminar <- c("Area_mean", "Radius_mean", "Perimeter_mean", "Area_worst", "Radius_worst", "Radius_se", "Perimeter_se", "Concave.points_worst", "Concave.points_mean")
+
+breast_data_def_corr <- breast_data_def[, !(names(breast_data_def) %in% col_eliminar)]
 
 ```
+
+La nueva dimensión del conjunto de datos es de 22 variables.
+
+A continuación, se seleccionan los grupos dentro del conjunto de datos que pueden resultar de interés para analizar y/o comparar. Sin embargo, en un análisis posterior se verá que no todos los atributos se van a utilizar. Los datos se van a dividir en tres grandes grupos: media (__mean__), error estándar (__se__) y peor (__worst__):
+
+```{r message= FALSE, warning=FALSE}
+
+breast_data_groups <- breast_data_def_corr
+
+# Agrupación mean
+breast_data_groups.mean <- breast_data_groups[c('Texture_mean', 'Smoothness_mean', 'Compactness_mean', 'Concavity_mean', 'Symmetry_mean', 'Fractal_dimension_mean')]
+# Agrupación se
+breast_data_groups.se <- breast_data_groups[c('Texture_se', 'Area_se', 'Smoothness_se', 'Compactness_se', 'Concavity_se', 'Concave.points_se', 'Symmetry_se', 'Fractal_dimension_se')]
+# Agrupación worst
+breast_data_groups.worst <- breast_data_groups[c('Texture_worst', 'Perimeter_worst', 'Smoothness_worst', 'Compactness_worst', 'Concavity_worst', 'Symmetry_worst', 'Fractal_dimension_worst')]
+```
+
+Se va a analizar la correlación entre las variables de cada grupo. Para el grupo __mean__ se tiene la siguiente matriz de correlación:
 
 ```{r  message= FALSE, warning=FALSE}
 if (!require('ggcorrplot')) install.packages('ggcorrplot'); library('ggcorrplot')
 
-M <- cor(breast_data_def[c(2:31)])
+# matriz de los p-values de la correlación
+p.mat_mean <- cor.mtest(breast_data_groups.mean)
 
-corrplot(M, type="upper", order="hclust", method="circle",
-         p.mat = p.mat, sig.level = 0.05, insig = "blank", tl.cex  = 0.65)
-```
+M_mean <- cor(breast_data_groups.mean)
 
-Revisando la información de correlación, se puede ver que **Area_mean**, **Radius_mean**, **Perimeter_mean**, **Area_worst**, **Radius_worst** y **Perimeter_worst** tienen una correlación de 1. Asimismo, **Area_se**, **Radius_se** y **Permiter_se** también tienen una correlación de 1. Lo mismo ocurre entre **Concave.points_worst**, **Concave.points_mean** y **Concavity_mean**. En todos los casos se puede eliminar todas ellas, menos una de cada grupo.
+corrplot(M_mean, type="upper", order="hclust", method="circle",
+         p.mat = p.mat_mean, sig.level = 0.05, insig = "blank", tl.cex  = 0.65)
 
-```{r}
-
-d_num <- as.numeric(breast_data_def[,1]) 
-col_eliminar <- c("Radius_mean", "Perimeter_mean", "Area_worst", "Radius_worst", "Radius_se", "Permiter_se", "Concave.points_worst", "Concave.points_mean")
-
-breast_data_def_corr <- breast_data_def[, !(names(breast_data_def) %in% col_eliminar)]
-dim(breast_data_def_corr)
 
 ```
 
-Finalmente, el conjunto de datos tendrá 24 atributos sobre los que se hará el análisis posterior.
-
-******
-# Limpieza de los datos
-******
-
-## Identificación y tratamiento de elementos vacíos, ceros o nulos
+A partir del análisis de correlación, se puede eliminar **Compactness_mean**, ya que tiene una correlación con **Concavity_mean** cercana a 1. Para el grupo __se__ se tiene la siguiente correlación:
 
 
-Los datos están limpios y no hay valores perdidos. Si revisamos el número de elementos nulos se puede observar que no hay:
+```{r  message= FALSE, warning=FALSE}
+if (!require('ggcorrplot')) install.packages('ggcorrplot'); library('ggcorrplot')
+
+# matriz de los p-values de la correlación
+p.mat_se <- cor.mtest(breast_data_groups.se)
+
+M_se <- cor(breast_data_groups.se)
+
+corrplot(M_se, type="upper", order="hclust", method="circle",
+         p.mat = p.mat_se, sig.level = 0.05, insig = "blank", tl.cex  = 0.65)
+```
+
+En este caso no se elimina ninguna variable. Para el grupo __worst__ se tiene la siguiente correlación:
+
+
+```{r  message= FALSE, warning=FALSE}
+if (!require('ggcorrplot')) install.packages('ggcorrplot'); library('ggcorrplot')
+
+# matriz de los p-values de la correlación
+p.mat_worst <- cor.mtest(breast_data_groups.worst)
+
+M_worst <- cor(breast_data_groups.worst)
+
+corrplot(M_worst, type="upper", order="hclust", method="circle",
+         p.mat = p.mat_worst, sig.level = 0.05, insig = "blank", tl.cex  = 0.65)
+```
+
+A partir del análisis de correlación, se puede eliminar **Compactness_worst**, ya que tiene una correlación con **Concavity_worst** cercana a 1.
+
+Por tanto, el nuevo conjunto de datos será:
 
 ```{r message= FALSE, warning=FALSE}
-sum(is.na(breast_data_def_corr))
+
+breast_data_def_grouping <- breast_data_groups[c('Diagnosis', 'Texture_mean', 'Smoothness_mean', 'Concavity_mean', 'Symmetry_mean', 'Fractal_dimension_mean', 'Texture_se', 'Area_se', 'Smoothness_se', 'Compactness_se', 'Concavity_se', 'Concave.points_se', 'Symmetry_se', 'Fractal_dimension_se', 'Texture_worst', 'Perimeter_worst', 'Smoothness_worst', 'Concavity_worst', 'Symmetry_worst', 'Fractal_dimension_worst')]
+
+dim(breast_data_def_grouping)
 
 ```
 
-En caso de que hubieran elementos nulos se puede: HABLAR UN POCO MÁS DE ESTO AL NO HABER VALORES NULOS!!!!!
+Finalmente, el conjunto de datos tendrá 20 atributos sobre los que se hará el análisis posterior, que podrá modificar la dimensión.
 
-* Eliminar los registros donde existan elementos nulos.
-* Cambiar los valores nulos por la media de valores de ese atributo.
-* Cambiar los valores nulos por la mediana de valores de ese atributo.
-
-## Identificación y tratamiento de valores extremos
-
-En la siguiente imagen se pueden observar los valores extremos (_outliers_) de cada atributo:
+A continuación se va a realizar el análisis descriptivo y estadístico de los datos. En el primero de ellos se van a analizar la media, mediana y desviación estándar de las muestras. En las gráficos de cajas presentados anteriormente, se puede apreciar que los valores de la mediana de los atributos están muy cerca de la mitad de la caja, indicando que los valores de los datos son más o menos simétricos. En el análisis descriptivo se puede comprobar que los atributos no están todos en el mismo rango, existiendo en algunos de ellos, una gran diferencia entre los valores mínimo y máximo:
 
 ```{r message= FALSE, warning=FALSE}
-
-boxplot(scale(breast_data_def_corr[2:5]), xlab ="variables", cex.axis=0.75, ylab = "Rango de Valores", col="blue", main="Información sobre anomalías y valores extremos")
-boxplot(scale(breast_data_def_corr[6:10]), xlab ="variables", cex.axis=0.55, ylab = "Rango de Valores", col="blue", main="Información sobre anomalías y valores extremos")
-boxplot(scale(breast_data_def_corr[11:15]), xlab ="variables", cex.axis=0.75, ylab = "Rango de Valores", col="blue", main="Información sobre anomalías y valores extremos")
-boxplot(scale(breast_data_def_corr[16:20]), xlab ="variables", cex.axis=0.60, ylab = "Rango de Valores", col="blue", main="Información sobre anomalías y valores extremos")
-boxplot(scale(breast_data_def_corr[21:23]), xlab ="variables", cex.axis=0.75, ylab = "Rango de Valores", col="blue", main="Información sobre anomalías y valores extremos")
-```
-
-Se puede observar que en todas los diagramas hay datos atípicos, lo que no quiere decir que sean erróneos.
-
-
-******
-# Análisis de los datos
-******
-
-## Planificación de los análisis a aplicar
-
-A continuación se va a realizar el análisis descriptivo, estadístico y de supervivencia de los datos. En el primero de ellos se van a analizar la media, mediana y desviación estándar de las muestras. En las gráficos de cajas presentados anteriormente, se puede apreciar que los valores de la mediana de los atributos están muy cerca de la mitad de la caja, indicando que los valores de los datos son más o menos simétricos. Asimismo, se presentan las medias, medianas e información de os cuartiles de cada  atributo:
-
-```{r message= FALSE, warning=FALSE}
-summary(breast_data_def_corr)
+summary(breast_data_def_grouping)
 
 ```
 
-El análisis estadístico inferencial tiene por objetivo modelar los datos a través de una distribución conocida. Partiendo de la premisa que el conjunto de datos estudiado representa una fracción de la totalidad de una población, su objetivo es inferir cómo es esa población, asumiendo un grado de error en las estimaciones por el hecho de disponer de una muestra reducida de los datos. En el siguiente subapartado se comprobará la normalidad y homogeneidad de la varianza.
+Por otro lado, el análisis estadístico inferencial tiene por objetivo modelar los datos a través de una distribución conocida. Partiendo de la premisa que el conjunto de datos estudiado representa una fracción de la totalidad de una población, su objetivo es inferir cómo es esa población, asumiendo un grado de error en las estimaciones por el hecho de disponer de una muestra reducida de los datos. En el siguiente subapartado se comprobará la normalidad y homogeneidad de la varianza.
 
 
 ## Normalidad y homogeneidad de la varianza
@@ -217,33 +289,32 @@ Para comprobar cuales de las variables cuantitativas de las que disponemos sigue
 ```{r message= FALSE, warning=FALSE}
 
 alpha = 0.05
-col.names = colnames(breast_data_def_corr)
+col.names = colnames(breast_data_def_grouping)
 
-for (i in 1:ncol(breast_data_def_corr)) {
+for (i in 1:ncol(breast_data_def_grouping)) {
   if (i == 1) cat("Variables que no siguen una distribución normal:\n\n")
-    if (is.integer(breast_data_def_corr[,i]) | is.numeric(breast_data_def_corr[,i])) {
-      p_val = shapiro.test(breast_data_def_corr[,i])$p.value
-      if (p_val < alpha) {
-        cat(col.names[i])
-        
-        if (i < ncol(breast_data_def_corr)) cat(", ")
-        if (i %% 3 == 0) cat("\n")
+  if (is.integer(breast_data_def_grouping[,i]) | is.numeric(breast_data_def_grouping[,i])) {
+    p_val = shapiro.test(breast_data_def_grouping[,i])$p.value
+    if (p_val < alpha) {
+      cat(col.names[i])
+      if (i < ncol(breast_data_def_grouping)) cat(", ")
+      if (i %% 3 == 0) cat("\n")
     }
   }
 }
 
 ```
 
-Se puede observar que la mayoría de los atributos no sigue una distribución normal. En cuanto a la homogeneidad de la varianza, se va a utilizar el test de **Fligner-Killeen**, debido a ese mismo hecho. Para ello, se van a comparar las varianzas para un diagnóstico benigno y maligno de los distintos atributos. Así:
+Se puede observar que todos los atributos no siguen una distribución normal. En cuanto a la homogeneidad de la varianza, se va a utilizar el test de **Fligner-Killeen**, debido a ese mismo hecho. Para ello, se van a comparar las varianzas para un diagnóstico benigno y maligno de los distintos atributos. Así:
 
 ```{r  message= FALSE, warning=FALSE}
 
 alpha = 0.05
-col.names = colnames(breast_data_def_corr)
-datosB <- filter(breast_data_def_corr, breast_data_def_corr$Diagnosis=="B")
-datosM <- filter(breast_data_def_corr, breast_data_def_corr$Diagnosis=="M")
+col.names = colnames(breast_data_def_grouping)
+datosB <- filter(breast_data_def_grouping, breast_data_def_grouping$Diagnosis=="B")
+datosM <- filter(breast_data_def_grouping, breast_data_def_grouping$Diagnosis=="M")
 
-for (i in 2:ncol(breast_data_def_corr)) {
+for (i in 2:ncol(breast_data_def_grouping)) {
   if (i == 2) cat("Los siguientes atributos presenta varianzas estadísticamente diferentes para los dos grupos de la variable objetivo:\n\n")
   a <- datosB[,i]
   b <- datosM[,i]
@@ -254,41 +325,47 @@ for (i in 2:ncol(breast_data_def_corr)) {
 
 ```
 
-Por ejemplo, si analizamos gráficamente la relación del atributo **Area_mean** con la variable objetivo:
+Por ejemplo, si analizamos gráficamente la relación del atributo **Perimeter_worst** con la variable objetivo:
 
 ```{r message= FALSE, warning=FALSE}
 if (!require('ggplot2')) install.packages('ggplot2'); library('ggplot2')
 
-ggplot(data=breast_data_def_corr,aes(x=Diagnosis,y=Area_mean,fill=Diagnosis))+geom_boxplot()+ggtitle("Media del área diagnóstico Benigno vs Maligno") 
+ggplot(data=breast_data_def_grouping,aes(x=Diagnosis,y=Perimeter_worst,fill=Diagnosis))+geom_boxplot()+ggtitle("Peor perímetro de célula para diagnóstico Benigno vs Maligno") 
 ```
 
 Se observa cómo la varianza es mayor en los casos de malignidad, aunque la mediana está centrada en ambos diagnósticos. Existen algunos valores atípicos.
 
-Si analizamos gráficamente la relación del atributo **Concavity_mean** con la variable objetivo:
+Si analizamos gráficamente la relación del atributo **Symmetry_worst** con la variable objetivo:
 
 ```{r message= FALSE, warning=FALSE}
 if (!require('ggplot2')) install.packages('ggplot2'); library('ggplot2')
 
-ggplot(data=breast_data_def_corr,aes(x=Diagnosis,y=Concavity_mean,fill=Diagnosis))+geom_boxplot()+ggtitle("Media de la concavidad diagnóstico Benigno vs Maligno") 
+ggplot(data=breast_data_def_grouping,aes(x=Diagnosis,y=Symmetry_worst,fill=Diagnosis))+geom_boxplot()+ggtitle("Peor simetría de célual en el diagnóstico Benigno vs Maligno") 
 ```
 
-También se observa cómo la varianza es mayor en los casos de malignidad, aunque la mediana está centrada en ambos diagnósticos. Existen muchos valores atípicos (mayores en el caso de benignidad, que pueden corresponder con errores en las medidas).
+También se observa cómo la varianza es mayor en los casos de malignidad, aunque la mediana está centrada en ambos diagnósticos. Existen muchos valores atípicos.
 
-Si por ejemplo comprobamos un atributo que no está en la lista anterior, como **Texture_mean**:
+Si por ejemplo comprobamos un atributo que no está en la lista anterior, como **Texture_worst**:
 
 
 ```{r message= FALSE, warning=FALSE}
 if (!require('ggplot2')) install.packages('ggplot2'); library('ggplot2')
 
-ggplot(data=breast_data_def_corr,aes(x=Diagnosis,y=Texture_mean,fill=Diagnosis))+geom_boxplot()+ggtitle("Media de la textura diagnóstico Benigno vs Maligno") 
+ggplot(data=breast_data_def_grouping,aes(x=Diagnosis,y=Texture_worst,fill=Diagnosis))+geom_boxplot()+ggtitle("Peor textura de la célula en el diagnóstico Benigno vs Maligno") 
 ```
 
-Se puede ver como la varianza es similar en ambos casos del diagnóstico. También se observa que hay valores atípicos.
+Se puede ver como la varianza es similar en ambos casos del diagnóstico. También se observa que hay valores atípicos. 
+
+Por tanto, del análisis anterior se puede ver que en el conjunto de datos, los atributos no siguen una distribución normal y 10 de ellos no presentan igualdad de varianza respecto a la variable objetivo.
 
 
 ## Pruebas estadísticas
 
-Puesto que las variables no se ajustan a una distribucion normal, se empleara el coecifiente de correlacion de **Spearman** para comprobar qué variables muestran una mayor relación con el tipo de tumor. 
+Por tanto:
+
+**¿Qué atributos tienen una mayor relación con la posibilidad de tener un tumor benigno o maligno?**
+
+Puesto que las variables no se ajustan a una distribucion normal, se empleará el coecifiente de correlación de **Spearman** para comprobar qué variables muestran una mayor relación con el tipo de tumor (benigno o maligno): 
 
 ```{r message= FALSE, warning=FALSE}
 
@@ -296,10 +373,9 @@ corr_matrix <- matrix(nc = 2, nr = 0)
 colnames(corr_matrix) <- c("estimate", "p-value")
 # Calcular el coeficiente de correlación para cada variable cuantitativa
 # con respecto al campo "Diagnosis"
-for (i in 2:(ncol(breast_data_def_corr))) {
-  if (is.integer(breast_data_def_corr[,i]) | is.numeric(breast_data_def_corr[,i])) {
-    spearman_test = cor.test(breast_data_def_corr[,i], as.numeric(breast_data_def_corr[,1]),
-    method = "spearman",exact=FALSE)
+for (i in 2:(ncol(breast_data_def_grouping))) {
+  if (is.integer(breast_data_def_grouping[,i]) | is.numeric(breast_data_def_grouping[,i])) {
+    spearman_test = cor.test(breast_data_def_grouping[,i], as.numeric(breast_data_def_grouping[,1]), method = "spearman",exact=FALSE)
     corr_coef = spearman_test$estimate
     p_val = spearman_test$p.value
     # Se añade la fila a la matriz
@@ -307,7 +383,7 @@ for (i in 2:(ncol(breast_data_def_corr))) {
     pair[1][1] = corr_coef
     pair[2][1] = p_val
     corr_matrix <- rbind(corr_matrix, pair)
-    rownames(corr_matrix)[nrow(corr_matrix)] <- colnames(breast_data_def_corr)[i]
+    rownames(corr_matrix)[nrow(corr_matrix)] <- colnames(breast_data_def_grouping)[i]
   }
 }
 
@@ -316,40 +392,50 @@ corr_matrix[sort(abs(corr_matrix[,1]),decreasing=T,index.return=T)[[2]],]
 
 ```
 
-Se aprecia que las variables que más influyen son **Perimeter_worst**, **Area_mean**, **Concavity_mean**, **Area_se** y **Concavity_worst**, que, además, están en el listado de atributos que presentan varianzas estadísticamente diferentes para los dos grupos de la variable objetivo (la diferencia de comportamiento respecto a los valores de la variable objetivo se mostró gráficamente para algunos de ellos).
+Se aprecia que las variables que más influyen son: **Perimeter_worst**, **Concavity_mean**, **Area_se** y **Concavity_worst** (todas por encima del 50% de estimación) que, además, están en el listado de atributos que presentan varianzas estadísticamente diferentes para los dos grupos de la variable objetivo (la diferencia de comportamiento respecto a los valores de la variable objetivo se mostró gráficamente para algunos de ellos). 
+
+Por otro lado:
+
+**¿Los valores __outliers__ son errores o corresponden con tumores malignos?**
+
+Para comprobar esta hipótesis, que se planteó anteriormente, se empleará la columna **Perimeter_worst** puesto que es la que mayor correlación presenta con la variable objetivo, para confirmar o descartar esta hipótesis a través del test de **Mann-Whitney** (contrasta si dos muestras proceden de poblaciones equidistribuidas, es decir, comprueba que los valores de una población no tienden a ser mayores que los de otra), puesto que los valores no siguen una distribucion normal y el número de muestras es pequeño.
 
 
-------------------------------------------------------------------------------------------------------------------------
+```{r message= FALSE, warning=FALSE}
 
-Asimismo, anteriormente se ha sugerido la hipótesis de que los valores extremos indican tumores malignos. Se empleará la columna **Perimeter_worst** puesto que es la que mayor correlación presenta con la variable objetivo, para confirmar o descartar esta hipótesis a través del test de **Mann-Whitney**, puesto que los valores no siguen una distribucion normal y el número de muestras es pequeño.
+# primer grupo de muestras: conjunto de datos con los registros que tienen los outliers de Perimeter_worst
+out_perimeter_worst <- boxplot.stats(breast_data_def_grouping$Perimeter_worst)$out
+out_perimeter_worst_ind <- which(breast_data_def_grouping$Perimeter_worst %in% out_perimeter_worst)
+out_perimeter_diagnosis <- breast_data_def_grouping[out_perimeter_worst_ind, ]
 
-```{r  message= FALSE, warning=FALSE}
-out_perimeter_worst <- boxplot.stats(breast_data_def_corr$Perimeter_worst)$out
-out_perimeter_worst_ind <- which(breast_data_def_corr$Perimeter_worst %in% out_perimeter_worst)
-out_perimeter_diagnosis <- breast_data_def_corr[out_perimeter_worst_ind,]
-in_perimeter_worst <- subset(breast_data_def_corr$Perimeter_worst, !(breast_data_def_corr$Perimeter_worst %in% out_perimeter_diagnosis$Perimeter_worst))
-in_perimeter_worst_ind <- which(breast_data_def_corr$Perimeter_worst %in% in_perimeter_worst)
-in_perimeter_diagnosis <- breast_data_def_corr[in_perimeter_worst_ind,]
+# segundo grupo de muestras: conjunto de datos con los registros que NO tienen los outliers de Perimeter_worst
+in_perimeter_worst <- subset(breast_data_def_grouping$Perimeter_worst, !(breast_data_def_grouping$Perimeter_worst %in% out_perimeter_diagnosis$Perimeter_worst))
+in_perimeter_worst_ind <- which(breast_data_def_grouping$Perimeter_worst %in% in_perimeter_worst)
+in_perimeter_diagnosis <- breast_data_def_grouping[in_perimeter_worst_ind, ]
 
-wilcox.test(as.numeric(out_perimeter_diagnosis$Diagnosis),as.numeric(in_perimeter_diagnosis$Diagnosis), alternative = "greater")
+wilcox.test(as.numeric(out_perimeter_diagnosis$Diagnosis), as.numeric(in_perimeter_diagnosis$Diagnosis),  alternative = "g", mu = 0)
+
+
 ```
-Tomaremos 0.05 como valor de significacion.
-En este caso el p-valor es menor que el  valor de significacion, por lo que aceptamos la hipotesis de que los valores extremos indican  tumores malignos.
+Al ser __p_value__ menor que el valor de la significancia (0.05), se rechaza la hipótesis nula, por tanto, la media del primer grupo de muestras  debe ser mayor (alternative es 'g' o 'greater') a la media del segundo grupo de muestras y si el primer grupo de muestras pertenece a tumores malignos (valor 2), tiene un valor asignado mayor al que tendrían el otro grupo en el que habría tumores benignos (valor 1) y malignos (valor 2). Esto quiere decir que podemos afirmar que el primer grupo de muestras está formado por muestras que corresponden con tumores malignos, es decir, los valores __outliers__ (que forman completamente ese grupo) están en muestras con tumores malignos, luego son valores válidos. En el apartado final sobre resultados, se presenta de forma gráfica cómo los valores __outliers__ pertenecen mayoritariamente a muestras de tumores malignos.
 
+En función de los análisis anteriores, se seleccionan las  varibles del conjunto de datos teniendo en cuenta cuáles de ellas están más correladas con la variable objetivo. Estas son:  **Perimeter_worst**, **Concavity_mean**, **Area_se**, **Concavity_worst** y la variable objetivo **Diagnosis**. Así:
 
+```{r message= FALSE, warning=FALSE}
 
-------------------------------------------------------------------------------------------------------------------------
+# se seleccionan las variables mejor correladas con la variable objetivo del grupo inicial
+data_to_analyze <- breast_data_def_grouping[c('Diagnosis', 'Perimeter_worst', 'Concavity_worst', 'Concavity_mean', 'Area_se')]
 
+```
 
-
-A continuación se van a utilizar diferentes métodos de clasificación sobre los atributos indicados anteriormente del conjunto de datos. Posteriormente, se evaluará la calidad de los método usados mediante Validación Cruzada o K-fold Cross Validation. 
+A continuación se van a utilizar diferentes métodos de clasificación usando los atributos indicados anteriormente del conjunto de datos y se evaluará la calidad de los método usados mediante Validación Cruzada o K-fold Cross Validation. 
 
 Inicialmente se van a crear los grupos de entrenamiento y test, el primero con 2/3 de los datos y el segundo con 1/3 de los datos originales:
 
 ```{r message= FALSE, warning=FALSE}
 if (!require('caTools')) install.packages('caTools'); library('caTools')
 
-data_to_analyze <- breast_data_def_corr[c('Diagnosis', 'Perimeter_worst', 'Area_mean', 'Concavity_mean', 'Area_se', 'Concavity_worst')]
+# se dividen en grupo de entrenamiento y grupo de test
 set.seed(1234)
 split <- sample.split(data_to_analyze$Diagnosis, SplitRatio = 0.75)
 training_set <- subset(data_to_analyze, split == TRUE)
@@ -359,10 +445,9 @@ dim(test_set)
 
 ```
 
-
 La distribución de muestras malignas y benignas debe ser simétrica en ambos conjuntos:
 
-```{r}
+```{r message= FALSE, warning=FALSE}
 cat("Porcentaje de muestras benignas y malignas en el conjunto de entrenamiento: ")
 prop.table(table(training_set$Diagnosis))
 cat("\nPorcentaje de muestras benignas y malignas en el conjunto de test: ")
@@ -371,13 +456,13 @@ prop.table(table(test_set$Diagnosis))
 
 ### Modelo de Regresión Logística
 
-La **Regresión Logística** calcula las probabilidades de ocurrencia de alguna de las clases del modelo a partir del uso de la función logística. Inicialmente se entrena el modelo y se observan los datos estadísticos:
+La **Regresión Logística** calcula las probabilidades de ocurrencia de alguna de las clases del modelo a partir del uso de la función logística. No requiere de ciertas condiciones como linealidad, normalidad y homocedasticidad. Inicialmente se entrena el modelo y se observan los datos estadísticos:
 
 
 ```{r message= FALSE, warning=FALSE}
 if (!require('stats')) install.packages('stats'); library('stats')
 
-clasificadorRL <- glm(Diagnosis ~ ., family = binomial, data = training_set)
+clasificadorRL <- glm(as.factor(Diagnosis) ~ ., family = binomial, data = training_set)
 
 ```
 
@@ -397,14 +482,13 @@ Analizando la matriz de confusión para evaluar la calidad de la predicción:
 
 
 ```{r message= FALSE, warning=FALSE}
-matrizConfusion_train_RL <- confusionMatrix(data=pred_train_RL, reference=training_set$Diagnosis, positive = "B",
-           dnn = c('Predicción', 'Realidad'))
+matrizConfusion_train_RL <- confusionMatrix(data=pred_train_RL, reference=training_set$Diagnosis, positive = "B", dnn = c('Predicción', 'Realidad'))
 
 matrizConfusion_train_RL
 
 ```
 
-Se observa que de 427 mujeres del grupo de entrenamiento, con el modelo usado se han clasificado correctamente 405 (259 verdaderos positivos y 146 verdaderos negativos). Asimismo hay 9 falsos negativos (es decir, 9 mujeres que no tenían cáncer de mama que se predijeron que lo tenían) y 13 falsos positivos (es decir, 13 mujeres que tenían cáncer de mama y que se predijeron que no lo tenían). El clasificador tienen una precisión de 0.94% (mayor al 62% que es el número de mujeres sin cáncer de mama). Por otro lado, el clasificador tiene una sensibilidad del 0.96% (verdaderos positivos identificados).
+Se observa que de 427 mujeres del grupo de entrenamiento, con el modelo usado se han clasificado correctamente 408 (260 verdaderos positivos y 148 verdaderos negativos). Asimismo hay 8 falsos negativos (es decir, 8 mujeres que no tenían cáncer de mama que se predijeron que lo tenían) y 11 falsos positivos (es decir, 11 mujeres que tenían cáncer de mama y que se predijeron que no lo tenían). El clasificador tienen una precisión de 95% (mayor al 62% que es el número de mujeres sin cáncer de mama). Por otro lado, el clasificador tiene una sensibilidad del 97% (verdaderos positivos identificados).
 
 Si hacemos la misma prueba sobre el grupo de test:
 
@@ -416,76 +500,91 @@ pred_test_RL <- predict(clasificadorRL, type = 'response', newdata = test_set)
 pred_test_RL <- ifelse(pred_test_RL > 0.5, 1, 0)
 pred_test_RL <- factor(pred_test_RL, levels = c("0", "1"), labels = c("B", "M"))
 
-matrizConfusion_test_RL <- confusionMatrix(data=pred_test_RL, reference=test_set$Diagnosis, positive = "B",
-           dnn = c('Predicción', 'Realidad'))
+matrizConfusion_test_RL <- confusionMatrix(data=pred_test_RL, reference=test_set$Diagnosis, positive = "B", dnn = c('Predicción', 'Realidad'))
 
 matrizConfusion_test_RL
 
 ```
 
-Se observa que de 142 mujeres del grupo de test, con el modelo usado se han clasificado correctamente 135 (86 verdaderos positivos y 49 verdaderos negativos). Asimismo hay 3 falsos negativos (es decir, 3 mujeres que no tenían cáncer de mama que se predijeron que lo tenían) y 4 falsos positivos (es decir, 4 mujeres que tenían cáncer de mama y que se predijeron que no lo tenían). El clasificador tienen una precisión de 0.95% (mayor al 62% que es el número de mujeres sin cáncer de mama). Por otro lado, el clasificador tiene una sensibilidad del 0.96% (verdaderos positivos identificados).
+Se observa que de 142 mujeres del grupo de test, con el modelo usado se han clasificado correctamente 133 (84 verdaderos positivos y 49 verdaderos negativos). Asimismo hay 5 falsos negativos (es decir, 5 mujeres que no tenían cáncer de mama que se predijeron que lo tenían) y 4 falsos positivos (es decir, 4 mujeres que tenían cáncer de mama y que se predijeron que no lo tenían). El clasificador tienen una precisión de 94% (mayor al 62% que es el número de mujeres sin cáncer de mama). Por otro lado, el clasificador tiene una sensibilidad del 94% (verdaderos positivos identificados).
 
 
 ### Modelo Naive Bayes
-La clasificacion **naive bayes** se basa en el teorema de bayes para clasificar.
-```
+La clasificacion **naive bayes** se basa en el teorema de **bayes** para clasificar. Inicialmente se entrena el modelo y se observan los datos estadísticos:
+
+```{r  message= FALSE, warning=FALSE}
 if (!require('e1071')) install.packages('e1071'); library('e1071')
+
 clasificadorBayes <- naiveBayes(Diagnosis ~ ., data = training_set)
+
 ```
 
 Analizando el modelo sobre el conjunto de entrenamiento:
 
-```
-pred_valid_bayes <- predict(clasificadorBayes, newdata = training_set)
+```{r message= FALSE, warning=FALSE}
 
-matrizConfusion_bayes <- confusionMatrix(data=pred_valid_bayes, reference=training_set$Diagnosis, positive = "B", dnn = c('Predicción', 'Realidad'))
+pred_train_bayes <- predict(clasificadorBayes, newdata = training_set)
+
+matrizConfusion_bayes <- confusionMatrix(data=pred_train_bayes, reference=training_set$Diagnosis, positive = "B", dnn = c('Predicción', 'Realidad'))
 matrizConfusion_bayes
+
 ```
-Se observa que de 427 mujeres del grupo de entrenamiento, con el modelo usado se han clasificado correctamente a 395. El clasificador tienen una precisión de 0.89% (mayor al 62% que es el número de mujeres sin cáncer de mama). Por otro lado, el clasificador tiene una sensibilidad del 96% (verdaderos positivos identificados).
+
+
+Se observa que de 427 mujeres del grupo de entrenamiento, con el modelo usado se han clasificado correctamente a 396. El clasificador tienen una precisión del 93% (mayor al 62% que es el número de mujeres sin cáncer de mama). Por otro lado, el clasificador tiene una sensibilidad del 96% (verdaderos positivos identificados).
 
 Si hacemos la misma prueba sobre el grupo de test:
 
-```
-pred_valid_bayes <- predict(clasificadorBayes, newdata = test_set)
-matrizConfusion_bayes <- confusionMatrix(data=pred_valid_bayes, reference=test_set$Diagnosis, positive = "B", dnn = c('Predicción', 'Realidad'))
+```{r message= FALSE, warning=FALSE}
+
+pred_test_bayes <- predict(clasificadorBayes, newdata = test_set)
+matrizConfusion_bayes <- confusionMatrix(data=pred_test_bayes, reference=test_set$Diagnosis, positive = "B", dnn = c('Predicción', 'Realidad'))
 matrizConfusion_bayes
+
 ```
 
-Se observa que de 142 mujeres del grupo de entrenamiento, con el modelo usado se han clasificado correctamente a 129. Ha habido 10 falsos positivos y 3 falsos negativos. El clasificador tienen una precisión de 0.84% (mayor al 62% que es el número de mujeres sin cáncer de mama). Por otro lado, el clasificador tiene una sensibilidad del 96% (verdaderos positivos identificados).
+Se observa que de 142 mujeres del grupo de entrenamiento, con el modelo usado se han clasificado correctamente a 128. Ha habido 10 falsos positivos y 4 falsos negativos. El clasificador tienen una precisión de 90% (mayor al 62% que es el número de mujeres sin cáncer de mama). Por otro lado, el clasificador tiene una sensibilidad del 95% (verdaderos positivos identificados).
 
 ### Modelo de Árbol de Decisión
 
+La clasificacion **Decision Tree** se basa en reglas lógicas a partir de los datos de entrada. Inicialmente se entrena el modelo y se observan los datos estadísticos:
 
-La clasificacion **Decision Tree** se basa en reglas logicas a partir de los datos de entrada.
-```
+```{r message= FALSE, warning=FALSE}
 if (!require('rpart')) install.packages('rpart'); library('rpart')
+
 clasificadorDT  <- rpart(Diagnosis ~ ., data = training_set)
+
 ```
 
 Analizando el modelo sobre el conjunto de entrenamiento:
 
-```
-pred_valid_tree <- predict(clasificadorDT, newdata = training_set)
+```{r message= FALSE, warning=FALSE}
 
-pred_df <- data.frame(pred_valid_tree)
+pred_train_tree <- predict(clasificadorDT, newdata = training_set)
+
+pred_df <- data.frame(pred_train_tree)
 fact = cut(pred_df$B,2,labels=c("M","B"))
 matrizConfusion_tree <- confusionMatrix(data=fact, reference=training_set$Diagnosis, positive = "B", dnn = c('Predicción', 'Realidad'))
 matrizConfusion_tree
-```
-Se observa que de 427 mujeres del grupo de entrenamiento, con el modelo usado se han clasificado correctamente a 403 El clasificador tienen una precisión de 0.91% (mayor al 62% que es el número de mujeres sin cáncer de mama). Por otro lado, el clasificador tiene una sensibilidad del 96% (verdaderos positivos identificados).
-
-Si hacemos la misma prueba sobre el grupo de test:
 
 ```
-pred_valid_tree <- predict(clasificadorDT, newdata = test_set)
-pred_df <- data.frame(pred_valid_tree)
+
+Se observa que de 427 mujeres del grupo de entrenamiento, con el modelo usado se han clasificado correctamente a 403. El clasificador tiene una precisión de 94% (mayor al 62% que es el número de mujeres sin cáncer de mama). Por otro lado, el clasificador tiene una sensibilidad del 96% (verdaderos positivos identificados).
+
+Si se hace la misma prueba sobre el grupo de test:
+
+```{r message= FALSE, warning=FALSE}
+
+pred_test_tree <- predict(clasificadorDT, newdata = test_set)
+pred_df <- data.frame(pred_test_tree)
 fact = cut(pred_df$B,2,labels=c("M","B"))
 matrizConfusion_tree <- confusionMatrix(data=fact, reference=test_set$Diagnosis, positive = "B", dnn = c('Predicción', 'Realidad'))
 matrizConfusion_tree
+
 ```
 
-Se observa que de 142 mujeres del grupo de entrenamiento, con el modelo usado se han clasificado correctamente a 131 Ha habido 5 falsos positivos y 6 falsos negativos. El clasificador tienen una precisión de 0.86% (mayor al 62% que es el número de mujeres sin cáncer de mama). Por otro lado, el clasificador tiene una sensibilidad del 93% (verdaderos positivos identificados).
 
+Se observa que de 142 mujeres del grupo de entrenamiento, con el modelo usado se han clasificado correctamente a 131. Ha habido 5 falsos positivos y 6 falsos negativos. El clasificador tienen una precisión de 92% (mayor al 62% que es el número de mujeres sin cáncer de mama). Por otro lado, el clasificador tiene una sensibilidad del 93% (verdaderos positivos identificados).
 
 
 ### Modelo Random Forests
@@ -499,179 +598,280 @@ clasificadorRF <- randomForest(Diagnosis ~ ., data = training_set, ntree = 250)
 
 ```
 
-
 Analizando el modelo sobre el conjunto de entrenamiento:
 
 
 ```{r message= FALSE, warning=FALSE}
 pred_train_RF <- predict(clasificadorRF, newdata = training_set)
-matrizConfusion_train_RF <- confusionMatrix(data=pred_train_RF, reference=training_set$Diagnosis, positive = "B",
-           dnn = c('Predicción', 'Realidad'))
+matrizConfusion_train_RF <- confusionMatrix(data=pred_train_RF, reference=training_set$Diagnosis, positive = "B", dnn = c('Predicción', 'Realidad'))
 matrizConfusion_train_RF
 
 ```
-Se observa que de 427 mujeres del grupo de entrenamiento, con el modelo usado se han clasificado correctamente todas ellas. El clasificador tienen una precisión de 0.99% (mayor al 62% que es el número de mujeres sin cáncer de mama). Por otro lado, el clasificador tiene una sensibilidad del 1% (verdaderos positivos identificados).
+
+Se observa que de 427 mujeres del grupo de entrenamiento, con el modelo usado se han clasificado correctamente todas ellas. El clasificador tienen una precisión de 100% (mayor al 62% que es el número de mujeres sin cáncer de mama). Por otro lado, el clasificador tiene una sensibilidad del 100% (verdaderos positivos identificados).
 
 Si hacemos la misma prueba sobre el grupo de test:
 
-
 ```{r message= FALSE, warning=FALSE}
 pred_test_RF <- predict(clasificadorRF, newdata = test_set)
-matrizConfusion_test_RF <- confusionMatrix(data=pred_test_RF, reference=test_set$Diagnosis, positive = "B",
-           dnn = c('Predicción', 'Realidad'))
+matrizConfusion_test_RF <- confusionMatrix(data=pred_test_RF, reference=test_set$Diagnosis, positive = "B", dnn = c('Predicción', 'Realidad'))
 matrizConfusion_test_RF
 
 ```
-Se observa que de 142 mujeres del grupo de test, con el modelo usado se han clasificado correctamente 133 (84 verdaderos positivos y 49 verdaderos negativos). Asimismo hay 5 falsos negativos (es decir, 5 mujeres que no tenían cáncer de mama que se predijeron que lo tenían) y 4 falsos positivos (es decir, 4 mujeres que tenían cáncer de mama y que se predijeron que no lo tenían). El clasificador tienen una precisión de 0.93% (mayor al 62% que es el número de mujeres sin cáncer de mama). Por otro lado, el clasificador tiene una sensibilidad del 0.94% (verdaderos positivos identificados).
+
+Se observa que de 142 mujeres del grupo de test, con el modelo usado se han clasificado correctamente 133 (85 verdaderos positivos y 48 verdaderos negativos). Asimismo hay 4 falsos negativos (es decir, 4 mujeres que no tenían cáncer de mama que se predijeron que lo tenían) y 5 falsos positivos (es decir, 5 mujeres que tenían cáncer de mama y que se predijeron que no lo tenían). El clasificador tienen una precisión de 94% (mayor al 62% que es el número de mujeres sin cáncer de mama). Por otro lado, el clasificador tiene una sensibilidad del 95% (verdaderos positivos identificados).
 
 
 ### Comparación de los modelos usando K-Fold Cross Validation
+
+A continuación se comparan los resultados de los modelos anteriores usando K-Fold Cross Validation. Se van a usar 10 subconjuntos:
+
+```{r message= FALSE, warning=FALSE}
+if (!require('caret')) install.packages('caret'); library('caret')
+
+folds <- createFolds(training_set$Diagnosis, k = 10)
+
+```
+
+```{r  message= FALSE, warning=FALSE}
+if (!require('class')) install.packages('class'); library('class')
+if (!require('rpart')) install.packages('rpart'); library('rpart')
+if (!require('randomForest')) install.packages('randomForest'); library('randomForest')
+
+# Regresion Logistica
+cvRegresionLogistica <- lapply(folds, function(x) {
+    training_fold <- training_set[-x, ]
+    test_fold <- training_set[x, ]
+    clasificadorRL <- glm(Diagnosis ~ ., family = binomial, data = training_fold)
+    y_pred <- predict(clasificadorRL, type = 'response', newdata = test_fold)
+    y_pred <- ifelse(y_pred > 0.5, 1, 0)
+    y_pred <- factor(y_pred, levels = c("0", "1"), labels = c("B", "M"))
+    cm <- table(test_fold$Diagnosis, y_pred)
+    precision <- (cm[1,1] + cm[2,2]) / (cm[1,1] + cm[2,2] +cm[1,2] + cm[2,1])
+    return(precision)
+})
+precisionRegresionLogistica <- mean(as.numeric(cvRegresionLogistica))
+
+# Naive-Bayes
+cvNaiveBayes <- lapply(folds, function(x){
+  training_fold <- training_set[-x, ]
+  test_fold <- training_set[x, ]
+  clasificadorNB <- naiveBayes(Diagnosis ~ ., data = training_fold)
+  y_pred <- predict(clasificadorNB, newdata = test_fold)
+  cm <- table(test_fold$Diagnosis, y_pred)
+  precision <- (cm[1,1] + cm[2,2]) / (cm[1,1] + cm[2,2] +cm[1,2] + cm[2,1])
+  return(precision)
+})
+precisionNaiveBayes <- mean(as.numeric(cvNaiveBayes))
+
+# Árbol de decisión
+cvDecisionTree <- lapply(folds, function(x){
+  training_fold <- training_set[-x, ]
+  test_fold <- training_set[x, ]
+  clasificadorDT <- rpart(Diagnosis ~ ., data = training_fold)
+  y_pred <- predict(clasificadorDT, newdata = test_fold, type = 'class')
+  cm <- table(test_fold$Diagnosis, y_pred)
+  precision <- (cm[1,1] + cm[2,2]) / (cm[1,1] + cm[2,2] +cm[1,2] + cm[2,1])
+  return(precision)
+})
+precisionDecisionTree <- mean(as.numeric(cvDecisionTree))
+
+# Random Forest
+cvRandomForest <- lapply(folds, function(x){
+  training_fold <- training_set[-x, ]
+  test_fold <- training_set[x, ]
+  clasificadorRF <- randomForest(Diagnosis ~ ., data = training_fold, ntree = 250)
+  y_pred <- predict(clasificadorRF, newdata = test_fold)
+  cm <- table(test_fold$Diagnosis, y_pred)
+  precision <- (cm[1,1] + cm[2,2]) / (cm[1,1] + cm[2,2] +cm[1,2] + cm[2,1])
+  return(precision)
+})
+precisionRandomForest <- mean(as.numeric(cvRandomForest))
+
+precisionRegresionLogistica
+precisionNaiveBayes
+precisionDecisionTree
+precisionRandomForest
+
+```
+
+Observándose que el mejor clasificador es el modelo de **Regresión logística** con un 94% de precisión (un poco mayor que en la prueba previa), frente a un 92% del modelo **Árbol de decisión**. 
 
 
 ******
 # Representación de los resultados
 ******
 
-A continuación se van a presentar distintos gráficos estadísticos que demuestran que los datos seleccionados y usados en los clasificadores tienen calidad suficiente para detectar, a partir de una muestra, si un tumor en la mama es benigno o maligno:
+A continuación se van a presentar distintos gráficos estadísticos que demuestran las pruebas estadísticas realizadas. Por un lado se comprobará que los datos seleccionados y usados en los clasificadores tienen calidad suficiente para detectar, a partir de una muestra, si un tumor en la mama es benigno o maligno y por otro se comprobará si los __outliers__ de las variables seleccionadas coinciden con muestras de tumores malignos. 
+
+Así, para comprobar la calidad del atributo **Perimeter_worst**:
 
 ```{r message= FALSE, warning=FALSE}
 if (!require('ggplot2')) install.packages('ggplot2'); library('ggplot2')
 
-ggplot(breast_data_def_corr, aes(x = Perimeter_worst)) + geom_histogram(binwidth = 10, col='black', fill='blue') + facet_wrap(~ Diagnosis)+ggtitle("Perímetro peor para diagnósticos Benignos vs Malignos") +labs(x="Perímetro peor", y="Número de mujeres") 
+ggplot(breast_data, aes(x = Perimeter_worst)) + geom_histogram(binwidth = 10, col='black', fill='blue') + facet_wrap(~ Diagnosis)+ggtitle("Perímetro peor para diagnósticos Benignos vs Malignos") +labs(x="Perímetro peor", y="Número de mujeres") +
+  geom_vline(aes(xintercept = mean(Perimeter_worst), colour="media"),
+              linetype = "dashed",
+              size = 1) 
 ```
 
-Se observa que las mujeres con diagnóstico benigno tienen un valor de **Perimeter_worst** alrededor del valor 87, mientras que las que tienen un diagnóstico maligno, el valor está por encima de 110.
+Se observa que las mujeres con diagnóstico benigno tienen un valor de **Perimeter_worst** inferior a la media (aproximadamente 110), mientras que las que tienen un diagnóstico maligno, el valor está por encima de la media:
 
 ```{r  message= FALSE, warning=FALSE}
-datos_PW_menos100_B <- filter(breast_data_def_corr, breast_data_def_corr$Perimeter_worst <= 100 & breast_data_def_corr$Diagnosis == "B")
-total_B <- filter(breast_data_def_corr, breast_data_def_corr$Diagnosis == "B")
+datos_PW_menos100_B <- filter(breast_data, breast_data$Perimeter_worst <= 110 & breast_data$Diagnosis == "B")
+total_B <- filter(breast_data, breast_data$Diagnosis == "B")
 valorB <- (nrow(datos_PW_menos100_B)/nrow(total_B))*100
-cat("El porcentaje de mujeres con valor inferior a 100 en el atributo peor perímetro (Perimeter_worst) y diagnóstico benigno es: " , valorB , "%\n")
+cat("El porcentaje de mujeres con valor inferior a la media en el atributo peor perímetro (Perimeter_worst) y diagnóstico benigno es: " , valorB , "%\n")
 
-datos_PW_menos100_M <- filter(breast_data_def_corr, breast_data_def_corr$Perimeter_worst <= 100 & breast_data_def_corr$Diagnosis == "M")
-total_M <- filter(breast_data_def_corr, breast_data_def_corr$Diagnosis == "M")
+datos_PW_menos100_M <- filter(breast_data, breast_data$Perimeter_worst <= 110 & breast_data$Diagnosis == "M")
+total_M <- filter(breast_data, breast_data$Diagnosis == "M")
 valorM <- (nrow(datos_PW_menos100_M)/nrow(total_M))*100
-cat("El porcentaje de mujeres con valor inferior a 100 en el atributo peor perímetro (Perimeter_worst) y diagnóstico maligno es: " , valorM , "%")
+cat("El porcentaje de mujeres con valor inferior a la media en el atributo peor perímetro (Perimeter_worst) y diagnóstico maligno es: " , valorM , "%")
+
+
 ```
 
-
-Si analizamos gráficamente el valor de la media del área:
+Si analizamos gráficamente el atributo **Concavity_mean**:
 
 
 ```{r message= FALSE, warning=FALSE}
 if (!require('ggplot2')) install.packages('ggplot2'); library('ggplot2')
 
-ggplot(breast_data_def_corr, aes(x = Area_mean)) + geom_histogram(binwidth = 45, col='black', fill='blue') + facet_wrap(~ Diagnosis)+ggtitle("Media de área para diagnósticos Benignos vs Malignos") +labs(x="Media de área", y="Número de mujeres") 
+ggplot(breast_data, aes(x = Concavity_mean)) + geom_histogram(binwidth = 0.01, col='black', fill='blue') + facet_wrap(~ Diagnosis)+ggtitle("Media de la concavidad para diagnósticos Benignos vs Malignos") +labs(x="Media de área", y="Número de mujeres") +
+  geom_vline(aes(xintercept = mean(Concavity_mean), colour="media"),
+              linetype = "dashed",
+              size = 1) 
 ```
 
-Se observa que las mujeres con diagnóstico benigno tienen un valor de **Area_mean** mayoritariamente inferior a 600, mientras que las que tienen un diagnóstico maligno, mayoritariamente tiene un valor del atributo por encima de 600.
+Se observa que las mujeres con diagnóstico benigno tienen un valor de **Concavity_mean** mayoritariamente inferior a la media (aproximadamente 0.08), mientras que las que tienen un diagnóstico maligno, mayoritariamente tiene un valor del atributo por encima de la media:
 
 ```{r  message= FALSE, warning=FALSE}
-datos_AM_menos600_B <- filter(breast_data_def_corr, breast_data_def_corr$Area_mean <= 600 & breast_data_def_corr$Diagnosis == "B")
-total_B <- filter(breast_data_def_corr, breast_data_def_corr$Diagnosis == "B")
-valorAMB <- (nrow(datos_AM_menos600_B)/nrow(total_B))*100
-cat("El porcentaje de mujeres con valor inferior a 600 en el atributo media de área (Area_mean) y diagnóstico benigno es: " , valorAMB , "%\n")
+datos_CM_B <- filter(breast_data, breast_data$Concavity_mean <= 0.08 & breast_data$Diagnosis == "B")
+total_CM_B <- filter(breast_data, breast_data$Diagnosis == "B")
+valorCMB <- (nrow(datos_CM_B)/nrow(total_CM_B))*100
+cat("El porcentaje de mujeres con valor inferior a la media en el atributo Concavity_mean y diagnóstico benigno es: " , valorCMB , "%\n")
 
-datos_AM_menos600_M <- filter(breast_data_def_corr, breast_data_def_corr$Area_mean <= 600 & breast_data_def_corr$Diagnosis == "M")
-total_M <- filter(breast_data_def_corr, breast_data_def_corr$Diagnosis == "M")
-valorAMM <- (nrow(datos_AM_menos600_M)/nrow(total_M))*100
-cat("El porcentaje de mujeres con valor inferior a 600 en el atributo media de área (Area_mean) y diagnóstico maligno es: " , valorAMM , "%")
+datos_CM_M <- filter(breast_data, breast_data$Concavity_mean <= 0.08 & breast_data$Diagnosis == "M")
+total_CM_M <- filter(breast_data, breast_data$Diagnosis == "M")
+valorCMM <- (nrow(datos_CM_M)/nrow(total_CM_M))*100
+cat("El porcentaje de mujeres con valor inferior a la media en el atributo Concavity_mean y diagnóstico maligno es: " , valorCMM , "%")
+
 ```
 
-
-
-
- 
- Si analizamos gráficamente el valor de la concavidad media:
+Si analizamos gráficamente el valor del atributo **Area_se**:
 
 
 ```{r message= FALSE, warning=FALSE}
 if (!require('ggplot2')) install.packages('ggplot2'); library('ggplot2')
 
-ggplot(breast_data_def_corr, aes(x =Concavity_mean)) + geom_histogram(binwidth = 0.05, col='black', fill='blue') + facet_wrap(~ Diagnosis)+ggtitle("Concavidad media para diagnósticos Benignos vs Malignos") +labs(x="Concavidad media", y="Número de mujeres") 
+ggplot(breast_data, aes(x = Area_se)) + geom_histogram(binwidth = 20, col='black', fill='blue') + facet_wrap(~ Diagnosis)+ggtitle("Media de área para diagnósticos Benignos vs Malignos") +labs(x="Media de área", y="Número de mujeres") +
+  geom_vline(aes(xintercept = mean(Area_se), colour="media"),
+              linetype = "dashed",
+              size = 1) 
 ```
  
- 
-Se observa que las mujeres con diagnóstico benigno tienen un valor de **Concavity_mean** mayoritariamente inferior a 0.1, mientras que las que tienen un diagnóstico maligno, mayoritariamente tiene un valor del atributo por encima de 0.1
+Se observa que las mujeres con diagnóstico benigno tienen un valor de **Area_se** mayoritariamente inferior a la media (aproximadamente 40), mientras que las que tienen un diagnóstico maligno, mayoritariamente tiene un valor del atributo por encima de la media:
 
 ```{r  message= FALSE, warning=FALSE}
-datos_AM_menos600_B <- filter(breast_data_def_corr, breast_data_def_corr$Concavity_mean <= 0.1 & breast_data_def_corr$Diagnosis == "B")
-total_B <- filter(breast_data_def_corr, breast_data_def_corr$Diagnosis == "B")
-valorAMB <- (nrow(datos_AM_menos600_B)/nrow(total_B))*100
-cat("El porcentaje de mujeres con valor inferior a 0.1 en el atributo concavidad media (Concavity_mean) y diagnóstico benigno es: " , valorAMB , "%\n")
+datos_ASE_B <- filter(breast_data, breast_data$Area_se <= 40 & breast_data$Diagnosis == "B")
+total_ASE_B <- filter(breast_data, breast_data$Diagnosis == "B")
+valorASEB <- (nrow(datos_ASE_B)/nrow(total_ASE_B))*100
+cat("El porcentaje de mujeres con valor inferior a la media en el atributo Area_se y diagnóstico benigno es: " , valorASEB , "%\n")
 
-datos_AM_menos600_M <- filter(breast_data_def_corr, breast_data_def_corr$Concavity_mean <= 0.1 & breast_data_def_corr$Diagnosis == "M")
-total_M <- filter(breast_data_def_corr, breast_data_def_corr$Diagnosis == "M")
-valorAMM <- (nrow(datos_AM_menos600_M)/nrow(total_M))*100
-cat("El porcentaje de mujeres con valor inferior a 0.1 en el atributo concavidad media (Concavity_mean) y diagnóstico maligno es: " , valorAMM , "%")
+datos_ASE_M <- filter(breast_data, breast_data$Area_se <= 40 & breast_data$Diagnosis == "M")
+total_ASE_M <- filter(breast_data, breast_data$Diagnosis == "M")
+valorASEM <- (nrow(datos_ASE_M)/nrow(total_ASE_M))*100
+cat("El porcentaje de mujeres con valor inferior a la media en el atributo Area_se y diagnóstico maligno es: " , valorASEM , "%")
+
 ```
- 
- 
- 
- 'Area_se'
- 
 
-  
- Si analizamos gráficamente el valor de la media del área:
-
+Si analizamos gráficamente el atributo **Concavity_worst**:
 
 ```{r message= FALSE, warning=FALSE}
 if (!require('ggplot2')) install.packages('ggplot2'); library('ggplot2')
 
-ggplot(breast_data_def_corr, aes(x = Area_se)) + geom_histogram(binwidth = 20, col='black', fill='blue') + facet_wrap(~ Diagnosis)+ggtitle("Media de área para diagnósticos Benignos vs Malignos") +labs(x="Media de área", y="Número de mujeres") 
+ggplot(breast_data, aes(x = Concavity_worst)) + geom_histogram(binwidth = 0.05, col='black', fill='blue') + facet_wrap(~ Diagnosis)+ggtitle("Peor concavidad para diagnósticos Benignos vs Malignos") +labs(x="Peor concavidad", y="Número de mujeres") +
+  geom_vline(aes(xintercept = mean(Concavity_worst), colour="media"),
+              linetype = "dashed",
+              size = 1) 
 ```
  
- 
-Se observa que las mujeres con diagnóstico benigno tienen un valor de **Area_se** mayoritariamente inferior a 40, mientras que las que tienen un diagnóstico maligno, mayoritariamente tiene un valor del atributo por encima de 40
+Se observa que las mujeres con diagnóstico benigno tienen un valor de **Concavity_worst** mayoritariamente inferior a la media (aproximadamente 0.27), mientras que las que tienen un diagnóstico maligno, mayoritariamente tiene un valor del atributo por encima de la media:
 
 ```{r  message= FALSE, warning=FALSE}
-datos_AM_menos600_B <- filter(breast_data_def_corr, breast_data_def_corr$Area_se <= 40 & breast_data_def_corr$Diagnosis == "B")
-total_B <- filter(breast_data_def_corr, breast_data_def_corr$Diagnosis == "B")
-valorAMB <- (nrow(datos_AM_menos600_B)/nrow(total_B))*100
-cat("El porcentaje de mujeres con valor inferior a 40 en el atributo media de área (Area_se) y diagnóstico benigno es: " , valorAMB , "%\n")
+datos_CW_B <- filter(breast_data, breast_data$Concavity_worst <= 0.27 & breast_data$Diagnosis == "B")
+total_CW_B <- filter(breast_data, breast_data$Diagnosis == "B")
+valorCWB <- (nrow(datos_CW_B)/nrow(total_CW_B))*100
+cat("El porcentaje de mujeres con valor inferior a la media en el atributo Concavity_worst y diagnóstico benigno es: " , valorCWB , "%\n")
 
-datos_AM_menos600_M <- filter(breast_data_def_corr, breast_data_def_corr$Area_se <= 40 & breast_data_def_corr$Diagnosis == "M")
-total_M <- filter(breast_data_def_corr, breast_data_def_corr$Diagnosis == "M")
-valorAMM <- (nrow(datos_AM_menos600_M)/nrow(total_M))*100
-cat("El porcentaje de mujeres con valor inferior a 40 en el atributo media de área (Area_mean) y diagnóstico maligno es: " , valorAMM , "%")
+datos_CW_M <- filter(breast_data, breast_data$Concavity_worst <= 0.27 & breast_data$Diagnosis == "M")
+total_CW_M <- filter(breast_data, breast_data$Diagnosis == "M")
+valorcwM <- (nrow(datos_CW_M)/nrow(total_CW_M))*100
+cat("El porcentaje de mujeres con valor inferior a la media en el atributo Concavity_worst y diagnóstico maligno es: " , valorcwM , "%")
+
 ```
- 
- 
- 
- 
- 'Concavity_worst'
- 
-  Si analizamos gráficamente el valor de la peor concavidad:
 
+Por otro lado, se va a comprobar que los __outliers__ detectados en las variables analizadas corresponden con muestras de tumores malignos:
 
 ```{r message= FALSE, warning=FALSE}
 if (!require('ggplot2')) install.packages('ggplot2'); library('ggplot2')
+if (!require('dplyr')) install.packages('dplyr'); library('dplyr')
+if (!require('grid')) install.packages('grid'); library('grid')
+if (!require('gridExtra')) install.packages('gridExtra'); library('gridExtra')
 
-ggplot(breast_data_def_corr, aes(x = Concavity_worst)) + geom_histogram(binwidth = 0.05, col='black', fill='blue') + facet_wrap(~ Diagnosis)+ggtitle("Peor concavidad para diagnósticos Benignos vs Malignos") +labs(x="Peor concavidad", y="Número de mujeres") 
+out_perimeter_worst <- boxplot.stats(data_to_analyze$Perimeter_worst)$out
+out_perimeter_worst_ind <- which(data_to_analyze$Perimeter_worst %in% out_perimeter_worst)
+out_perimeter_diagnosis <- data_to_analyze[out_perimeter_worst_ind,]
+
+datos_pw <- out_perimeter_diagnosis %>% group_by(Diagnosis) %>% summarise(Total=n()) 
+ggplot(datos_pw, aes(x=Diagnosis,  y=Total, fill=Diagnosis))+ ggtitle("Diagnóstico de los outliers del atributo Perimeter_worst") +
+  geom_bar(stat='identity') +                                         
+  geom_text(aes(label=Total), vjust=1.6, color="black", position = position_dodge(0.9),  size=4.0) 
+
+out_Concavity_mean <- boxplot.stats(data_to_analyze$Concavity_mean)$out
+out_Concavity_mean_ind <- which(data_to_analyze$Concavity_mean %in% out_Concavity_mean)
+out_Concavity_mean_diagnosis <- data_to_analyze[out_Concavity_mean_ind,]
+
+datos_cm <- out_Concavity_mean_diagnosis %>% group_by(Diagnosis) %>% summarise(Total=n()) 
+ggplot(datos_cm, aes(x=Diagnosis,  y=Total, fill=Diagnosis))+ ggtitle("Diagnóstico de los outliers del atributo Concavity_mean") +
+  geom_bar(stat='identity') +                                         
+  geom_text(aes(label=Total), vjust=1.6, color="black", position = position_dodge(0.9),  size=4.0) 
+
+out_Area_se <- boxplot.stats(data_to_analyze$Area_se)$out
+out_Area_se_ind <- which(data_to_analyze$Area_se %in% out_Area_se)
+out_Area_se_diagnosis <- data_to_analyze[out_Area_se_ind,]
+
+datos_ase <- out_Area_se_diagnosis %>% group_by(Diagnosis) %>% summarise(Total=n()) 
+ggplot(datos_ase, aes(x=Diagnosis,  y=Total, fill=Diagnosis))+ ggtitle("Diagnóstico de los outliers del atributo Area_se") +
+  geom_bar(stat='identity') +                                         
+  geom_text(aes(label=Total), vjust=1.6, color="black", position = position_dodge(0.9),  size=4.0) 
+
+out_Concavity_worst <- boxplot.stats(data_to_analyze$Concavity_worst)$out
+out_Concavity_worst_ind <- which(data_to_analyze$Concavity_worst %in% out_Concavity_worst)
+out_Concavity_worst_diagnosis <- data_to_analyze[out_Concavity_worst_ind,]
+
+datos_cw <- out_Concavity_worst_diagnosis %>% group_by(Diagnosis) %>% summarise(Total=n()) 
+ggplot(datos_cw, aes(x=Diagnosis,  y=Total, fill=Diagnosis))+ ggtitle("Diagnóstico de los outliers del atributo Concavity_worst") +
+  geom_bar(stat='identity') +                                         
+  geom_text(aes(label=Total), vjust=1.6, color="black", position = position_dodge(0.9),  size=4.0) 
+
+
 ```
- 
- 
-Se observa que las mujeres con diagnóstico benigno tienen un valor de **Concavity_worst** mayoritariamente inferior a 0.25, mientras que las que tienen un diagnóstico maligno, mayoritariamente tiene un valor del atributo por encima de 0.25.
 
-```{r  message= FALSE, warning=FALSE}
-datos_AM_menos600_B <- filter(breast_data_def_corr, breast_data_def_corr$Concavity_worst <= 0.25 & breast_data_def_corr$Diagnosis == "B")
-total_B <- filter(breast_data_def_corr, breast_data_def_corr$Diagnosis == "B")
-valorAMB <- (nrow(datos_AM_menos600_B)/nrow(total_B))*100
-cat("El porcentaje de mujeres con valor inferior a 0.25 en el atributo peor concavidad (Concavity_worst) y diagnóstico benigno es: " , valorAMB , "%\n")
-
-datos_AM_menos600_M <- filter(breast_data_def_corr, breast_data_def_corr$Concavity_worst <= 0.25 & breast_data_def_corr$Diagnosis == "M")
-total_M <- filter(breast_data_def_corr, breast_data_def_corr$Diagnosis == "M")
-valorAMM <- (nrow(datos_AM_menos600_M)/nrow(total_M))*100
-cat("El porcentaje de mujeres con valor inferior a 0.25 en el atributo peor concavidad (Concavity_worst) y diagnóstico maligno es: " , valorAMM , "%")
-```
+En la mayoría de los casos (110 de 115), los __outliers__ corresponden a "tumores malignos", por tanto, no es aconsejable eliminar las muestras con esos  valores (ni sustituirlos por otros valores) del conjunto de datos, ya que no parecen ser errores en los datos. Sin embargo, en el caso de los valores __outliers__ de muestras benignas, se podrían haber sustituido por la media de los valores válidos del atributo, ya que sí parecen ser valores erróneos.
 
 
 ******
 # Conclusiones
 ******
 
+En el trabajo realizado se ha utilizado el __dataset__  **Breast Cancer Wisconsin (Diagnostic) Data Set** de UCI Machine Learning Repository que analiza la incidencia del cáncer de mama en una población de 569 mujeres. Se ha realizado un estudio del conjunto de datos para describir las distintas variables y se ha comprobado que el conjunto está limpio aunque tiene algunos __outliers__, la mayoría de los cuales se demuestra que son valores correctos y que pertenecen a muestras de tumores malignos.
 
+Por otro lado, se analizó la correlación de los datos del conjunto completo y agrupándolo por tipo de medidas con lo que se eliminaron una gran cantidad de variables que no aportan la suficiente información. Asimismo, se comprobó la normalidad y homocedasticidad, observando que los atributos seleccionados no siguen una distribución normal y 10 de ellos no presentan igualdad de varianza respecto a la variable objetivo. 
 
+Asimismo, se hacen dos tipos de pruebas estadísticas: por un lado se analizaron los datos para ver qué atributos tenía más del 50% de correlación con la variable objetivo, ya que estos son los que más influyen en la benignidad o malignidad de un tumor y por otro lado, se analizó si los __outliers__ realmente correspondían a medidas correctas. El resultado de estas pruebas se demostró gráficamente en las sección "Representación de los resultados".
+
+Con los atributos seleccionados se realizaron cuatros modelos de clasificación: **Regresión logística**, **Naive-Bayes**, **Árbol de decisión** y **Random Forests**, comprobando su calidad mediante una validación cruzada con 10 __folds__. Finalmente, se deduce que el clasificador del modelo de **Regresión logística** es el que tiene más precisión con un 94% y el modelo **Árbol de decisión** es el que tiene menos con un 92% de precisión.
 
 
 
