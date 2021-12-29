@@ -9,10 +9,10 @@ output:
     theme: cosmo
     toc: yes
     toc_depth: 2
-  word_document: default
   pdf_document:
     highlight: zenburn
     toc: yes
+  word_document: default
 ---
 
 ```{r setup, include=FALSE}
@@ -125,7 +125,7 @@ summary(breast_data_def)
 ```
 Se puede observar que no hay datos perdidos (no hay valores NA) y que hay una serie de atributos que tienen valor 0 en alguna muestra, pero todos tienen que ver con la concavidad de la célula, por lo que se asume que son valores correctos.
 
-En caso de que hubieran elementos nulos se puede, entre otros: 
+En caso de que hubiera elementos nulos se puede, entre otros: 
 
 * Eliminar los registros donde existan elementos nulos: solo debe utilizarse cuando el proceso de recogida de datos es aleatorio (en otro caso, produce un sesgo) y si hay datos suficientes (si no, puede afectar a la representación de la muestra).
 * Cambiar los valores nulos por la media, mediana o moda de valores de ese atributo: distorsiona la verdadera distribución de la variable y la correlación entre variables, así como dificulta la estimación de la varianza.
@@ -133,19 +133,14 @@ En caso de que hubieran elementos nulos se puede, entre otros:
 
 ## Identificación y tratamiento de valores extremos
 
-En la siguiente imagen se pueden observar los valores extremos (__outliers__) de cada atributo:
+En la siguiente imagen se pueden observar los valores extremos (__outliers__) de una serie de atributos del conjunto de datos:
 
 ```{r message= FALSE, warning=FALSE}
 
-boxplot(scale(breast_data_def[2:5]), xlab ="variables", cex.axis=0.75, ylab = "Rango de Valores", col="blue", main="Información sobre anomalías y valores extremos")
-boxplot(scale(breast_data_def[6:10]), xlab ="variables", cex.axis=0.55, ylab = "Rango de Valores", col="blue", main="Información sobre anomalías y valores extremos")
-boxplot(scale(breast_data_def[11:15]), xlab ="variables", cex.axis=0.60, ylab = "Rango de Valores", col="blue", main="Información sobre anomalías y valores extremos")
-boxplot(scale(breast_data_def[16:20]), xlab ="variables", cex.axis=0.60, ylab = "Rango de Valores", col="blue", main="Información sobre anomalías y valores extremos")
-boxplot(scale(breast_data_def[21:25]), xlab ="variables", cex.axis=0.60, ylab = "Rango de Valores", col="blue", main="Información sobre anomalías y valores extremos")
-boxplot(scale(breast_data_def[26:31]), xlab ="variables", cex.axis=0.50, ylab = "Rango de Valores", col="blue", main="Información sobre anomalías y valores extremos")
+boxplot(scale(breast_data_def[,c(8, 15, 24, 28)]), xlab ="variables", cex.axis=0.8, ylab = "Rango de Valores", col="blue", main="Información sobre anomalías y valores extremos")
 ```
 
-Se puede observar que en todos los gráficos hay datos atípicos, lo que no quiere decir que sean erróneos. Si los valores atípicos corresponden con tumores malignos, pueden ser valores correctos y no errores en las medidas. Posteriormente se comprobará que la mayoría de estos valores __outliers__ corresponden con tumores malignos.
+Se puede observar que hay datos atípicos en los atributos analizados. Si los valores atípicos corresponden con tumores malignos, pueden ser valores correctos y no errores en las medidas, sin embargo, cuando los valores atípicos están en en muestras benignas, se podrían corregir. En un apartado posterior se analizará si corresponden con muestras malignas o no y si no lo son, se tratarán estos valores.
 
 
 ******
@@ -272,14 +267,9 @@ dim(breast_data_def_grouping)
 
 Finalmente, el conjunto de datos tendrá 20 atributos sobre los que se hará el análisis posterior, que podrá modificar la dimensión.
 
-A continuación se va a realizar el análisis descriptivo y estadístico de los datos. En el primero de ellos se van a analizar la media, mediana y desviación estándar de las muestras. En las gráficos de cajas presentados anteriormente, se puede apreciar que los valores de la mediana de los atributos están muy cerca de la mitad de la caja, indicando que los valores de los datos son más o menos simétricos. En el análisis descriptivo se puede comprobar que los atributos no están todos en el mismo rango, existiendo en algunos de ellos, una gran diferencia entre los valores mínimo y máximo:
+En apartados anteriores se comprobó que los valores de la mediana de los atributos están muy cerca de la mitad de la caja, indicando que los valores de los datos son más o menos simétricos. En el análisis descriptivo que se realizó en el apartado "Identificación y tratamiento de elementos vacíos, ceros o nulos" se puede comprobar que los atributos no están todos en el mismo rango, existiendo en algunos de ellos, una gran diferencia entre los valores mínimo y máximo.
 
-```{r message= FALSE, warning=FALSE}
-summary(breast_data_def_grouping)
-
-```
-
-Por otro lado, el análisis estadístico inferencial tiene por objetivo modelar los datos a través de una distribución conocida. Partiendo de la premisa que el conjunto de datos estudiado representa una fracción de la totalidad de una población, su objetivo es inferir cómo es esa población, asumiendo un grado de error en las estimaciones por el hecho de disponer de una muestra reducida de los datos. En el siguiente subapartado se comprobará la normalidad y homogeneidad de la varianza.
+En los siguientes apartados se hará un estudio de la normalidad y homogeneidad de la varianza, así como  se planterán algunas pruebas estadísticas.
 
 
 ## Normalidad y homogeneidad de la varianza
@@ -365,7 +355,7 @@ Por tanto:
 
 **¿Qué atributos tienen una mayor relación con la posibilidad de tener un tumor benigno o maligno?**
 
-Puesto que las variables no se ajustan a una distribucion normal, se empleará el coecifiente de correlación de **Spearman** para comprobar qué variables muestran una mayor relación con el tipo de tumor (benigno o maligno): 
+Puesto que las variables no se ajustan a una distribucion normal, se empleará el coeficiente de correlación de **Spearman** para comprobar qué variables muestran una mayor relación con el tipo de tumor (benigno o maligno): 
 
 ```{r message= FALSE, warning=FALSE}
 
@@ -417,14 +407,61 @@ wilcox.test(as.numeric(out_perimeter_diagnosis$Diagnosis), as.numeric(in_perimet
 
 
 ```
-Al ser __p_value__ menor que el valor de la significancia (0.05), se rechaza la hipótesis nula, por tanto, la media del primer grupo de muestras  debe ser mayor (alternative es 'g' o 'greater') a la media del segundo grupo de muestras y si el primer grupo de muestras pertenece a tumores malignos (valor 2), tiene un valor asignado mayor al que tendrían el otro grupo en el que habría tumores benignos (valor 1) y malignos (valor 2). Esto quiere decir que podemos afirmar que el primer grupo de muestras está formado por muestras que corresponden con tumores malignos, es decir, los valores __outliers__ (que forman completamente ese grupo) están en muestras con tumores malignos, luego son valores válidos. En el apartado final sobre resultados, se presenta de forma gráfica cómo los valores __outliers__ pertenecen mayoritariamente a muestras de tumores malignos.
+Al ser __p_value__ menor que el valor de la significancia (0.05), se rechaza la hipótesis nula, por tanto, la media del primer grupo de muestras  debe ser mayor (alternative es 'g' o 'greater') a la media del segundo grupo de muestras y si el primer grupo de muestras pertenece a tumores malignos (valor 2), tiene un valor asignado mayor al que tendrían el otro grupo en el que habría tumores benignos (valor 1) y malignos (valor 2). Esto quiere decir que podemos afirmar que el primer grupo de muestras está formado por muestras que corresponden con tumores malignos, es decir, los valores __outliers__ (que forman completamente ese grupo) están en muestras con tumores malignos, luego se considerarán valores válidos. En el apartado final sobre resultados, se presenta de forma gráfica cómo los valores __outliers__ pertenecen a muestras de tumores malignos.
 
-En función de los análisis anteriores, se seleccionan las  varibles del conjunto de datos teniendo en cuenta cuáles de ellas están más correladas con la variable objetivo. Estas son:  **Perimeter_worst**, **Concavity_mean**, **Area_se**, **Concavity_worst** y la variable objetivo **Diagnosis**. Así:
+En función de los análisis anteriores, se seleccionan las variables del conjunto de datos teniendo en cuenta cuáles de ellas están más correladas con la variable objetivo. Estas son:  **Perimeter_worst**, **Concavity_mean**, **Area_se**, **Concavity_worst** y la variable objetivo **Diagnosis**. Así:
 
 ```{r message= FALSE, warning=FALSE}
 
 # se seleccionan las variables mejor correladas con la variable objetivo del grupo inicial
-data_to_analyze <- breast_data_def_grouping[c('Diagnosis', 'Perimeter_worst', 'Concavity_worst', 'Concavity_mean', 'Area_se')]
+data_selected <- breast_data_def_grouping[c('Diagnosis', 'Perimeter_worst', 'Concavity_worst', 'Concavity_mean', 'Area_se')]
+
+```
+
+Antes de empezar el análisis y tal y como se indicó anteriormente, se va a eliminar las anomalías en las muestras de tumores benignos sustituyéndolas por la **media** de los valores de las mismas características, sin embargo, previamente hay que descubrir los verdaderos _outliers_ de esas muestras. Para encontrar estos valores se van a analizar el primer y tercer cuartil de cada variable seleccionada (ya que entre esos dos valores o rango intercuantílico, está el 50% de todos los valores obtenidos en el estudio). Así:
+
+```
+| variable        |    Q1   |    Q3   | IRQ=Q3-Q1 | US:Q3+1,5XIQR | UI:Q1-1,5XIQR |
+|-----------------|---------|---------|-----------|---------------|---------------|
+| Perimeter_worst |  84,11  |  125,40 |   41,29   |    187,335    |     22,175    |
+| Concavity_mean  | 0,02956 |  0,1307 |  0,10114  |    0,24281    |    -0,12215   |
+| Area_se         |  17,85  |  45,19  |   27,34   |     86,2      |     -23,16    |
+| Concavity_worst |  0,1145 |  0,3829 |  0,2684   |    0,7855     |    -0,2881    |
+```
+
+Por tanto, los valores que estén fuera de los rangos anteriores (UI..US) se modificarán para ser sustituidos por la **media** de los datos de las mismas características. Los valores atípicos que estén dentro del rango, se considerarán valores válidos. Así: 
+
+```{r message= FALSE, warning=FALSE}
+
+data_selected_B <- filter(data_selected, data_selected$Diagnosis == 'B')
+boxplot(scale(data_selected_B[2:5]), xlab ="atributos", cex.axis=0.8, ylab = "Rango de Valores", col="blue", main="Información sobre anomalías (antes de la eliminación)")
+
+for (i in 1:nrow(data_selected)) {
+  if (data_selected[i,1] == 'B') {
+    if (data_selected[i,2] < 22.175 | data_selected[i,2] > 187.335)
+      data_selected[i,2] <- mean(data_selected_B$Perimeter_worst)
+    if (data_selected[i,4] < -0.12215 | data_selected[i,4] > 0.24281)
+      data_selected[i,4] <- mean(data_selected_B$Concavity_mean)
+    if (data_selected[i,5] < -23.16 | data_selected[i,5] > 86.2)
+      data_selected[i,5] <- mean(data_selected_B$Area_se)
+    if (data_selected[i,3] < -0.2881 | data_selected[i,3] > 0.7855)
+      data_selected[i,3] <- mean(data_selected_B$Concavity_worst)
+  }  
+}
+data_selected_B <- filter(data_selected, data_selected$Diagnosis == 'B')
+boxplot(scale(data_selected_B[2:5]), xlab ="atributos", cex.axis=0.8, ylab = "Rango de Valores", col="blue", main="Información sobre anomalías (después de la eliminación)")
+
+```
+
+Una vez eliminados los datos __outliers__ de las muestras de tumores benignos, se genera el archivo de salida con los datos a analizar:
+
+
+```{r message= FALSE, warning=FALSE}
+
+data_to_analyze <- data_selected
+
+# se genera el archivo de salida
+write.csv(data_to_analyze, "TCVD_CancerWisconsi.csv")
 
 ```
 
@@ -436,7 +473,7 @@ Inicialmente se van a crear los grupos de entrenamiento y test, el primero con 2
 if (!require('caTools')) install.packages('caTools'); library('caTools')
 
 # se dividen en grupo de entrenamiento y grupo de test
-set.seed(1234)
+set.seed(123)
 split <- sample.split(data_to_analyze$Diagnosis, SplitRatio = 0.75)
 training_set <- subset(data_to_analyze, split == TRUE)
 test_set <- subset(data_to_analyze, split == FALSE)
@@ -488,7 +525,7 @@ matrizConfusion_train_RL
 
 ```
 
-Se observa que de 427 mujeres del grupo de entrenamiento, con el modelo usado se han clasificado correctamente 408 (260 verdaderos positivos y 148 verdaderos negativos). Asimismo hay 8 falsos negativos (es decir, 8 mujeres que no tenían cáncer de mama que se predijeron que lo tenían) y 11 falsos positivos (es decir, 11 mujeres que tenían cáncer de mama y que se predijeron que no lo tenían). El clasificador tienen una precisión de 95% (mayor al 62% que es el número de mujeres sin cáncer de mama). Por otro lado, el clasificador tiene una sensibilidad del 97% (verdaderos positivos identificados).
+Se observa que de 427 mujeres del grupo de entrenamiento, con el modelo usado se han clasificado correctamente 408 (259 verdaderos positivos y 149 verdaderos negativos). Asimismo hay 9 falsos negativos (es decir, 9 mujeres que no tenían cáncer de mama que se predijeron que lo tenían) y 10 falsos positivos (es decir, 10 mujeres que tenían cáncer de mama y que se predijeron que no lo tenían). El clasificador tiene una precisión de 95% (mayor al 62% que es el número de mujeres sin cáncer de mama). Por otro lado, el clasificador tiene una sensibilidad del 97% (verdaderos positivos identificados).
 
 Si hacemos la misma prueba sobre el grupo de test:
 
@@ -506,7 +543,7 @@ matrizConfusion_test_RL
 
 ```
 
-Se observa que de 142 mujeres del grupo de test, con el modelo usado se han clasificado correctamente 133 (84 verdaderos positivos y 49 verdaderos negativos). Asimismo hay 5 falsos negativos (es decir, 5 mujeres que no tenían cáncer de mama que se predijeron que lo tenían) y 4 falsos positivos (es decir, 4 mujeres que tenían cáncer de mama y que se predijeron que no lo tenían). El clasificador tienen una precisión de 94% (mayor al 62% que es el número de mujeres sin cáncer de mama). Por otro lado, el clasificador tiene una sensibilidad del 94% (verdaderos positivos identificados).
+Se observa que de 142 mujeres del grupo de test, con el modelo usado se han clasificado correctamente 134 (86 verdaderos positivos y 48 verdaderos negativos). Asimismo hay 3 falsos negativos (es decir, 3 mujeres que no tenían cáncer de mama que se predijeron que lo tenían) y 5 falsos positivos (es decir, 5 mujeres que tenían cáncer de mama y que se predijeron que no lo tenían). El clasificador tienen una precisión de 94% (mayor al 62% que es el número de mujeres sin cáncer de mama). Por otro lado, el clasificador tiene una sensibilidad del 97% (verdaderos positivos identificados).
 
 
 ### Modelo Naive Bayes
@@ -531,7 +568,7 @@ matrizConfusion_bayes
 ```
 
 
-Se observa que de 427 mujeres del grupo de entrenamiento, con el modelo usado se han clasificado correctamente a 396. El clasificador tienen una precisión del 93% (mayor al 62% que es el número de mujeres sin cáncer de mama). Por otro lado, el clasificador tiene una sensibilidad del 96% (verdaderos positivos identificados).
+Se observa que de 427 mujeres del grupo de entrenamiento, con el modelo usado se han clasificado correctamente a 401. El clasificador tiene una precisión del 94% (mayor al 62% que es el número de mujeres sin cáncer de mama). Por otro lado, el clasificador tiene una sensibilidad del 96% (verdaderos positivos identificados).
 
 Si hacemos la misma prueba sobre el grupo de test:
 
@@ -543,7 +580,7 @@ matrizConfusion_bayes
 
 ```
 
-Se observa que de 142 mujeres del grupo de entrenamiento, con el modelo usado se han clasificado correctamente a 128. Ha habido 10 falsos positivos y 4 falsos negativos. El clasificador tienen una precisión de 90% (mayor al 62% que es el número de mujeres sin cáncer de mama). Por otro lado, el clasificador tiene una sensibilidad del 95% (verdaderos positivos identificados).
+Se observa que de 142 mujeres del grupo de entrenamiento, con el modelo usado se han clasificado correctamente a 129. Ha habido 6 falsos positivos y 7 falsos negativos. El clasificador tienen una precisión de 91% (mayor al 62% que es el número de mujeres sin cáncer de mama). Por otro lado, el clasificador tiene una sensibilidad del 92% (verdaderos positivos identificados).
 
 ### Modelo de Árbol de Decisión
 
@@ -569,7 +606,7 @@ matrizConfusion_tree
 
 ```
 
-Se observa que de 427 mujeres del grupo de entrenamiento, con el modelo usado se han clasificado correctamente a 403. El clasificador tiene una precisión de 94% (mayor al 62% que es el número de mujeres sin cáncer de mama). Por otro lado, el clasificador tiene una sensibilidad del 96% (verdaderos positivos identificados).
+Se observa que de 427 mujeres del grupo de entrenamiento, con el modelo usado se han clasificado correctamente a 408. El clasificador tiene una precisión de 95% (mayor al 62% que es el número de mujeres sin cáncer de mama). Por otro lado, el clasificador tiene una sensibilidad del 96% (verdaderos positivos identificados).
 
 Si se hace la misma prueba sobre el grupo de test:
 
@@ -584,7 +621,7 @@ matrizConfusion_tree
 ```
 
 
-Se observa que de 142 mujeres del grupo de entrenamiento, con el modelo usado se han clasificado correctamente a 131. Ha habido 5 falsos positivos y 6 falsos negativos. El clasificador tienen una precisión de 92% (mayor al 62% que es el número de mujeres sin cáncer de mama). Por otro lado, el clasificador tiene una sensibilidad del 93% (verdaderos positivos identificados).
+Se observa que de 142 mujeres del grupo de entrenamiento, con el modelo usado se han clasificado correctamente a 127. Ha habido 4 falsos positivos y 11 falsos negativos. El clasificador tienen una precisión de 89% (mayor al 62% que es el número de mujeres sin cáncer de mama). Por otro lado, el clasificador tiene una sensibilidad del 88% (verdaderos positivos identificados).
 
 
 ### Modelo Random Forests
@@ -619,7 +656,7 @@ matrizConfusion_test_RF
 
 ```
 
-Se observa que de 142 mujeres del grupo de test, con el modelo usado se han clasificado correctamente 133 (85 verdaderos positivos y 48 verdaderos negativos). Asimismo hay 4 falsos negativos (es decir, 4 mujeres que no tenían cáncer de mama que se predijeron que lo tenían) y 5 falsos positivos (es decir, 5 mujeres que tenían cáncer de mama y que se predijeron que no lo tenían). El clasificador tienen una precisión de 94% (mayor al 62% que es el número de mujeres sin cáncer de mama). Por otro lado, el clasificador tiene una sensibilidad del 95% (verdaderos positivos identificados).
+Se observa que de 142 mujeres del grupo de test, con el modelo usado se han clasificado correctamente 129 (81 verdaderos positivos y 48 verdaderos negativos). Asimismo hay 8 falsos negativos (es decir, 8 mujeres que no tenían cáncer de mama que se predijeron que lo tenían) y 5 falsos positivos (es decir, 5 mujeres que tenían cáncer de mama y que se predijeron que no lo tenían). El clasificador tienen una precisión de 91% (mayor al 62% que es el número de mujeres sin cáncer de mama). Por otro lado, el clasificador tiene una sensibilidad del 91% (verdaderos positivos identificados).
 
 
 ### Comparación de los modelos usando K-Fold Cross Validation
@@ -695,7 +732,7 @@ precisionRandomForest
 
 ```
 
-Observándose que el mejor clasificador es el modelo de **Regresión logística** con un 94% de precisión (un poco mayor que en la prueba previa), frente a un 92% del modelo **Árbol de decisión**. 
+Observándose que el mejor clasificador es el modelo de **Regresión Logística** con un 95% de precisión (mayor que en la prueba previa), frente a un 93% del modelo **Árbol de decisión**. 
 
 
 ******
@@ -819,12 +856,14 @@ if (!require('dplyr')) install.packages('dplyr'); library('dplyr')
 if (!require('grid')) install.packages('grid'); library('grid')
 if (!require('gridExtra')) install.packages('gridExtra'); library('gridExtra')
 
+grid.newpage()
+
 out_perimeter_worst <- boxplot.stats(data_to_analyze$Perimeter_worst)$out
 out_perimeter_worst_ind <- which(data_to_analyze$Perimeter_worst %in% out_perimeter_worst)
 out_perimeter_diagnosis <- data_to_analyze[out_perimeter_worst_ind,]
 
 datos_pw <- out_perimeter_diagnosis %>% group_by(Diagnosis) %>% summarise(Total=n()) 
-ggplot(datos_pw, aes(x=Diagnosis,  y=Total, fill=Diagnosis))+ ggtitle("Diagnóstico de los outliers del atributo Perimeter_worst") +
+plot1 <- ggplot(datos_pw, aes(x=Diagnosis,  y=Total, fill=Diagnosis))+ ggtitle("Outliers (Perimeter_worst)") +
   geom_bar(stat='identity') +                                         
   geom_text(aes(label=Total), vjust=1.6, color="black", position = position_dodge(0.9),  size=4.0) 
 
@@ -833,7 +872,7 @@ out_Concavity_mean_ind <- which(data_to_analyze$Concavity_mean %in% out_Concavit
 out_Concavity_mean_diagnosis <- data_to_analyze[out_Concavity_mean_ind,]
 
 datos_cm <- out_Concavity_mean_diagnosis %>% group_by(Diagnosis) %>% summarise(Total=n()) 
-ggplot(datos_cm, aes(x=Diagnosis,  y=Total, fill=Diagnosis))+ ggtitle("Diagnóstico de los outliers del atributo Concavity_mean") +
+plot2 <- ggplot(datos_cm, aes(x=Diagnosis,  y=Total, fill=Diagnosis))+ ggtitle("Outliers (Concavity_mean)") +
   geom_bar(stat='identity') +                                         
   geom_text(aes(label=Total), vjust=1.6, color="black", position = position_dodge(0.9),  size=4.0) 
 
@@ -842,7 +881,7 @@ out_Area_se_ind <- which(data_to_analyze$Area_se %in% out_Area_se)
 out_Area_se_diagnosis <- data_to_analyze[out_Area_se_ind,]
 
 datos_ase <- out_Area_se_diagnosis %>% group_by(Diagnosis) %>% summarise(Total=n()) 
-ggplot(datos_ase, aes(x=Diagnosis,  y=Total, fill=Diagnosis))+ ggtitle("Diagnóstico de los outliers del atributo Area_se") +
+plot3 <- ggplot(datos_ase, aes(x=Diagnosis,  y=Total, fill=Diagnosis))+ ggtitle("Outliers (Area_se)") +
   geom_bar(stat='identity') +                                         
   geom_text(aes(label=Total), vjust=1.6, color="black", position = position_dodge(0.9),  size=4.0) 
 
@@ -851,29 +890,26 @@ out_Concavity_worst_ind <- which(data_to_analyze$Concavity_worst %in% out_Concav
 out_Concavity_worst_diagnosis <- data_to_analyze[out_Concavity_worst_ind,]
 
 datos_cw <- out_Concavity_worst_diagnosis %>% group_by(Diagnosis) %>% summarise(Total=n()) 
-ggplot(datos_cw, aes(x=Diagnosis,  y=Total, fill=Diagnosis))+ ggtitle("Diagnóstico de los outliers del atributo Concavity_worst") +
+plot4 <- ggplot(datos_cw, aes(x=Diagnosis,  y=Total, fill=Diagnosis))+ ggtitle("Outliers (Concavity_worst)") +
   geom_bar(stat='identity') +                                         
   geom_text(aes(label=Total), vjust=1.6, color="black", position = position_dodge(0.9),  size=4.0) 
 
+grid.arrange(plot1, plot2, plot3, plot4, ncol=2, heights=3:2)
 
 ```
 
-En la mayoría de los casos (110 de 115), los __outliers__ corresponden a "tumores malignos", por tanto, no es aconsejable eliminar las muestras con esos  valores (ni sustituirlos por otros valores) del conjunto de datos, ya que no parecen ser errores en los datos. Sin embargo, en el caso de los valores __outliers__ de muestras benignas, se podrían haber sustituido por la media de los valores válidos del atributo, ya que sí parecen ser valores erróneos.
+En todos los casos, los __outliers__ corresponden a "tumores malignos", una vez que se han modificado aquellos que correspondían con tumores benignos. No es aconsejable eliminar las muestras con los  valores __outliers__ de tumores malignos (ni sustituirlos por otros valores), ya que pueden ser valores correctos.
 
 
 ******
 # Conclusiones
 ******
 
-En el trabajo realizado se ha utilizado el __dataset__  **Breast Cancer Wisconsin (Diagnostic) Data Set** de UCI Machine Learning Repository que analiza la incidencia del cáncer de mama en una población de 569 mujeres. Se ha realizado un estudio del conjunto de datos para describir las distintas variables y se ha comprobado que el conjunto está limpio aunque tiene algunos __outliers__, la mayoría de los cuales se demuestra que son valores correctos y que pertenecen a muestras de tumores malignos.
+En el trabajo realizado se ha utilizado el __dataset__  **Breast Cancer Wisconsin (Diagnostic) Data Set** de UCI Machine Learning Repository que analiza la incidencia del cáncer de mama en una población de 569 mujeres. Se ha realizado un estudio del conjunto de datos para describir las distintas variables y se ha comprobado que el conjunto está limpio aunque tiene algunos __outliers__, la mayoría de los cuales se demuestra que pertenecen a muestras de tumores malignos y que, por tanto, se consideran valores correctos.
 
 Por otro lado, se analizó la correlación de los datos del conjunto completo y agrupándolo por tipo de medidas con lo que se eliminaron una gran cantidad de variables que no aportan la suficiente información. Asimismo, se comprobó la normalidad y homocedasticidad, observando que los atributos seleccionados no siguen una distribución normal y 10 de ellos no presentan igualdad de varianza respecto a la variable objetivo. 
 
 Asimismo, se hacen dos tipos de pruebas estadísticas: por un lado se analizaron los datos para ver qué atributos tenía más del 50% de correlación con la variable objetivo, ya que estos son los que más influyen en la benignidad o malignidad de un tumor y por otro lado, se analizó si los __outliers__ realmente correspondían a medidas correctas. El resultado de estas pruebas se demostró gráficamente en las sección "Representación de los resultados".
 
-Con los atributos seleccionados se realizaron cuatros modelos de clasificación: **Regresión logística**, **Naive-Bayes**, **Árbol de decisión** y **Random Forests**, comprobando su calidad mediante una validación cruzada con 10 __folds__. Finalmente, se deduce que el clasificador del modelo de **Regresión logística** es el que tiene más precisión con un 94% y el modelo **Árbol de decisión** es el que tiene menos con un 92% de precisión.
-
-
-
-
+Con los atributos seleccionados se realizaron cuatros modelos de clasificación: **Regresión logística**, **Naive-Bayes**, **Árbol de decisión** y **Random Forests**, comprobando su calidad mediante una validación cruzada con 10 __folds__. Finalmente, se deduce que el clasificador del modelo de **Regresión logística** es el que tiene más precisión con un 95% y el modelo **Árbol de decisión** es el que tiene menos con un 93% de precisión.
 
