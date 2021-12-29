@@ -22,7 +22,8 @@ Los archivos se han distribuidos en las siguientes carpetas:
     * TCVD_CancerWisconsi_Original.csv (Conjunto de datos original)
     * TCVD_CancerWisconsi.csv (Conjunto de datos analizados)
 - doc: 
-    * TCVD_Práctica2.html (Explicación del código generado) 
+    * TCVD_Práctica2.html (Explicación del código generado)
+    * TCVD_Práctica2.pdf (Explicación del código generado y contribuciones al trabajo) 
 
 ### Recursos
 
