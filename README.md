@@ -9,8 +9,8 @@ El objetivo de esta actividad será aprender a aplicar los conocimientos adquiri
 
 ### Miembros del equipo
 
-Eva García Ocaña  
-Carmen Nieves Ojeda Guerra (cnojedaUOC)
+Eva García Ocaña (Leglait)  
+Carmen Nieves Ojeda Guerra (cnojedaUOC)  
 
 ### Documentación
 
