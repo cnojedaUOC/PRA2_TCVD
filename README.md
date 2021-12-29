@@ -10,7 +10,7 @@ El objetivo de esta actividad será aprender a aplicar los conocimientos adquiri
 ### Miembros del equipo
 
 Eva García Ocaña  
-Carmen Nieves Ojeda Guerra
+Carmen Nieves Ojeda Guerra (cnojedaUOC)
 
 ### Documentación
 
